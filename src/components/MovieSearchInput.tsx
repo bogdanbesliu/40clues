@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Film, Loader2 } from "lucide-react";
+import { Search, Film, Loader2, CornerDownLeft } from "lucide-react";
 
 interface MovieSuggestion {
   id: number;
@@ -76,7 +76,6 @@ export default function MovieSearchInput({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen || suggestions.length === 0) {
-      // Dacă apasă Enter pe un text fără dropdown deschis
       if (e.key === "Enter" && query.trim().length >= 2) {
         e.preventDefault();
         handleSelect(query.trim());
@@ -95,7 +94,6 @@ export default function MovieSearchInput({
       if (selectedIndex >= 0 && suggestions[selectedIndex]) {
         handleSelect(suggestions[selectedIndex].title);
       } else if (suggestions.length > 0) {
-        // Dacă utilizatorul apasă Enter direct, luăm prima sugestie
         handleSelect(suggestions[0].title);
       }
     } else if (e.key === "Escape") {
@@ -135,16 +133,20 @@ export default function MovieSearchInput({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => suggestions.length > 0 && setIsOpen(true)}
-          placeholder="Search and guess movie title (e.g. Inception)..."
-          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-12 pr-11 py-3.5 text-base text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/70 focus:border-amber-500 transition-all shadow-inner disabled:opacity-50"
+          placeholder="Search movie title (e.g. Inception)..."
+          className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-12 pr-16 py-3.5 text-base text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/70 focus:border-amber-500 transition-all shadow-inner disabled:opacity-50"
           autoFocus
         />
-        {isLoading && (
-          <Loader2
-            className="w-5 h-5 animate-spin text-amber-400 absolute right-4 pointer-events-none"
-            aria-hidden="true"
-          />
-        )}
+
+        <div className="absolute right-3.5 flex items-center gap-1.5 pointer-events-none">
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-amber-400" aria-hidden="true" />
+          ) : query.length >= 2 ? (
+            <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-semibold bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">
+              <CornerDownLeft className="w-3 h-3" /> Enter
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {isOpen && suggestions.length > 0 && (
@@ -152,7 +154,7 @@ export default function MovieSearchInput({
           id="movie-suggestions-list"
           role="listbox"
           aria-label="Suggested movie titles"
-          className="absolute z-50 left-0 right-0 mt-2 bg-slate-900/95 border border-slate-700 rounded-xl shadow-2xl backdrop-blur-md overflow-hidden max-h-72 overflow-y-auto"
+          className="absolute z-50 left-0 right-0 mt-2 bg-slate-900/95 border border-slate-700 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md overflow-hidden max-h-72 overflow-y-auto"
         >
           {suggestions.map((movie, index) => {
             const isSelected = index === selectedIndex;
@@ -163,7 +165,7 @@ export default function MovieSearchInput({
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => handleSelect(movie.title)}
-                className={`w-full flex items-center gap-3.5 px-4 py-3 cursor-pointer text-left transition-colors border-b border-slate-800/60 last:border-b-0 ${
+                className={`w-full flex items-center gap-3.5 px-4 py-2.5 cursor-pointer text-left transition-colors border-b border-slate-800/60 last:border-b-0 ${
                   isSelected
                     ? "bg-amber-500/20 text-amber-200"
                     : "hover:bg-slate-800/80 text-slate-200"
@@ -174,14 +176,14 @@ export default function MovieSearchInput({
                     src={movie.poster}
                     alt=""
                     aria-hidden="true"
-                    className="w-9 h-13 object-cover rounded shadow bg-slate-800 flex-shrink-0"
+                    className="w-8 h-12 object-cover rounded shadow bg-slate-800 flex-shrink-0"
                   />
                 ) : (
                   <div
-                    className="w-9 h-13 bg-slate-800 rounded flex items-center justify-center flex-shrink-0"
+                    className="w-8 h-12 bg-slate-800 rounded flex items-center justify-center flex-shrink-0"
                     aria-hidden="true"
                   >
-                    <Film className="w-5 h-5 text-slate-400" />
+                    <Film className="w-4 h-4 text-slate-400" />
                   </div>
                 )}
                 <div className="flex flex-col min-w-0">

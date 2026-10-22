@@ -5,7 +5,7 @@ function normalizeString(str: string) {
   return str
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]/g, ""); // elimină spații, cratime, semne de punctuație
+    .replace(/[^a-z0-9]/g, "");
 }
 
 export async function POST(request: Request) {
@@ -18,14 +18,12 @@ export async function POST(request: Request) {
 
     const today = gameDate || new Date().toISOString().split("T")[0];
 
-    // 1. Căutăm jocul după data cerută
     let { data: game, error } = await supabase
       .from("daily_games")
       .select("title, year, clues")
       .eq("game_date", today)
       .maybeSingle();
 
-    // 2. Fallback: dacă nu îl găsește după dată, îl ia pe cel mai recent generat
     if (!game) {
       const fallback = await supabase
         .from("daily_games")
@@ -39,7 +37,6 @@ export async function POST(request: Request) {
     }
 
     if (error || !game) {
-      console.error("Supabase query error in /api/guess:", error);
       return NextResponse.json({ error: "Game not found in database" }, { status: 404 });
     }
 
@@ -47,22 +44,48 @@ export async function POST(request: Request) {
     const clues = (game.clues as string[]) || [];
     const isLastClue = clueNumber >= clues.length;
 
+    // Căutare poster oficial TMDB pentru dezvăluirea de final
+    let posterPath: string | null = null;
+    if (isMatch || isLastClue) {
+      try {
+        const tmdbApiKey = process.env.TMDB_API_KEY;
+        if (tmdbApiKey) {
+          const res = await fetch(
+            `https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(
+              game.title
+            )}&year=${game.year}&include_adult=false`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data.results?.[0]?.poster_path) {
+              posterPath = `https://image.tmdb.org/t/p/w342${data.results[0].poster_path}`;
+            }
+          }
+        }
+      } catch {}
+    }
+
     if (isMatch) {
       return NextResponse.json({
         correct: true,
         title: game.title,
         year: game.year,
+        poster: posterPath,
       });
     }
 
     return NextResponse.json({
       correct: false,
       gameOver: isLastClue,
-      solution: isLastClue ? { title: game.title, year: game.year } : null,
+      solution: isLastClue
+        ? { title: game.title, year: game.year, poster: posterPath }
+        : null,
       nextClue: !isLastClue ? clues[clueNumber] : null,
     });
   } catch (err: any) {
-    console.error("Error in /api/guess POST:", err);
-    return NextResponse.json({ error: "Internal server error", details: err?.message }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal server error", details: err?.message },
+      { status: 500 }
+    );
   }
 }
