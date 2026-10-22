@@ -44,25 +44,37 @@ export async function POST(request: Request) {
     const clues = (game.clues as string[]) || [];
     const isLastClue = clueNumber >= clues.length;
 
-    // Căutare poster oficial TMDB pentru dezvăluirea de final
     let posterPath: string | null = null;
+
     if (isMatch || isLastClue) {
       try {
         const tmdbApiKey = process.env.TMDB_API_KEY;
         if (tmdbApiKey) {
-          const res = await fetch(
+          // 1. Încercare de căutare cu an
+          let res = await fetch(
             `https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(
               game.title
             )}&year=${game.year}&include_adult=false`
           );
-          if (res.ok) {
-            const data = await res.json();
-            if (data.results?.[0]?.poster_path) {
-              posterPath = `https://image.tmdb.org/t/p/w342${data.results[0].poster_path}`;
-            }
+          let data = await res.json();
+
+          // 2. Fallback: căutare fără an dacă titlul exact n-a returnat rezultate
+          if (!data.results || data.results.length === 0) {
+            res = await fetch(
+              `https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(
+                game.title
+              )}&include_adult=false`
+            );
+            data = await res.json();
+          }
+
+          if (data.results?.[0]?.poster_path) {
+            posterPath = `https://image.tmdb.org/t/p/w342${data.results[0].poster_path}`;
           }
         }
-      } catch {}
+      } catch (err) {
+        console.error("TMDB Poster fetch error:", err);
+      }
     }
 
     if (isMatch) {
