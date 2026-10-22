@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" />
+      <stop offset="50%" stop-color="#F97316" />
+      <stop offset="100%" stop-color="#EF4444" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="24" fill="#020617" />
+  <rect x="10" y="10" width="80" height="80" rx="16" fill="url(#grad)" />
+  <rect x="14" y="14" width="72" height="72" rx="12" fill="#0f172a" />
+  <!-- Clapper marks -->
+  <path d="M22 24 L32 34 M38 24 L48 34 M54 24 L64 34 M70 24 L80 34" stroke="#F59E0B" stroke-width="4" stroke-linecap="round" />
+  <!-- Text 40 -->
+  <text x="50" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="900" fill="#F8FAFC" text-anchor="middle" letter-spacing="-1">40</text>
+</svg>

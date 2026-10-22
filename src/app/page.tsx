@@ -13,11 +13,11 @@ import {
   ChevronDown,
   ChevronUp,
   Film,
-  RotateCcw,
 } from "lucide-react";
 import MovieSearchInput from "@/components/MovieSearchInput";
 import LeaderboardModal from "@/components/LeaderboardModal";
 import { createBrowserClient } from "@supabase/ssr";
+import { getClueBadge } from "@/lib/clueCategories";
 
 interface SolutionData {
   title: string;
@@ -81,7 +81,7 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Animație Count-Up pentru scorul final
+  // Animație Count-Up pentru scorul de victorie
   useEffect(() => {
     if (hasWon) {
       const targetScore = calculateScore(clueNumber);
@@ -294,7 +294,7 @@ export default function Home() {
 
   const handleShare = () => {
     const finalScore = calculateScore(clueNumber);
-    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues used\n🏆 ${finalScore} pts\n🔥 ${streak}-day streak\n\nhttps://40clues.vercel.app`;
+    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues used\n🏆 ${finalScore} pts\n🔥 ${streak}-day streak\n\nhttps://40clues.com`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);
@@ -303,7 +303,6 @@ export default function Home() {
     }
   };
 
-  // Procentaj progres
   const progressPercent = Math.min(100, Math.round((clueNumber / totalClues) * 100));
 
   return (
@@ -373,7 +372,9 @@ export default function Home() {
       {/* Visual Clue Progress Bar */}
       <div className="max-w-xl w-full mb-6">
         <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1.5">
-          <span>Clue {clueNumber} of {totalClues}</span>
+          <span>
+            Clue {clueNumber} of {totalClues}
+          </span>
           <span className="text-amber-400">{calculateScore(clueNumber)} pts left</span>
         </div>
         <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/80">
@@ -410,14 +411,31 @@ export default function Home() {
             aria-labelledby="active-clue-heading"
             className="relative overflow-hidden bg-slate-900/95 border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur min-h-[160px] flex flex-col justify-between transition-all"
           >
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-300 mb-3">
-              <span
-                id="active-clue-heading"
-                className="flex items-center gap-1.5 text-amber-400 font-bold tracking-wide"
-              >
-                <Sparkles className="w-4 h-4" aria-hidden="true" /> Clue #{clueNumber}
-              </span>
-              <span className="bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-md text-amber-300 font-bold">
+            {/* Header-ul cardului cu Micro-badge-ul de categorie */}
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  id="active-clue-heading"
+                  className="flex items-center gap-1.5 text-amber-400 font-bold tracking-wide text-xs"
+                >
+                  <Sparkles className="w-4 h-4" aria-hidden="true" /> Clue #{clueNumber}
+                </span>
+
+                {unlockedClues.length > 0 && (() => {
+                  const currentClueText = unlockedClues[unlockedClues.length - 1];
+                  const badge = getClueBadge(currentClueText, clueNumber);
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${badge.colorClass}`}
+                    >
+                      <span aria-hidden="true">{badge.emoji}</span>
+                      <span>{badge.label}</span>
+                    </span>
+                  );
+                })()}
+              </div>
+
+              <span className="bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-md text-amber-300 font-bold text-xs flex-shrink-0 shadow-inner">
                 {calculateScore(clueNumber)} pts
               </span>
             </div>
@@ -473,7 +491,9 @@ export default function Home() {
                 {hasWon ? "Cinema Mastermind!" : "Game Over"}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                {hasWon ? "You successfully deduced today's movie!" : "Better luck on tomorrow's clues!"}
+                {hasWon
+                  ? "You successfully deduced today's movie!"
+                  : "Better luck on tomorrow's clues!"}
               </p>
             </div>
 
@@ -496,12 +516,14 @@ export default function Home() {
                     Target Film
                   </span>
                   <h3 className="text-xl font-bold text-slate-100">{solution.title}</h3>
-                  <span className="text-sm text-slate-400 font-medium">Released in {solution.year}</span>
+                  <span className="text-sm text-slate-400 font-medium">
+                    Released in {solution.year}
+                  </span>
                 </div>
               </div>
             )}
 
-            {/* 3-Column Stats Grid with Count-up */}
+            {/* 3-Column Stats Grid cu Count-up */}
             {hasWon && (
               <div className="grid grid-cols-3 gap-3 w-full">
                 <div className="bg-slate-950/60 border border-slate-800/80 p-3 rounded-xl flex flex-col items-center">
