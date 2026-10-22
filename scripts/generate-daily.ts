@@ -1,8 +1,12 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import * as dotenv from "dotenv";
+import * as fs from "fs";
 
-dotenv.config({ path: ".env.local" });
+// Încarcă .env.local doar dacă fișierul există fizic (pe localhost)
+if (fs.existsSync(".env.local")) {
+  dotenv.config({ path: ".env.local" });
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
