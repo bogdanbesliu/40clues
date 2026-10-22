@@ -117,7 +117,9 @@ export default function Home() {
           const score = calculateScore(parsed.clueNumber);
           await syncScoreToDatabase(parsed.clueNumber, score, today);
         }
-      } catch {}
+      } catch (err) {
+        console.error("Local sync error:", err);
+      }
     }
   };
 
@@ -151,9 +153,10 @@ export default function Home() {
         setHasLost(parsed.hasLost);
         setSolution(parsed.solution);
       } else {
-        const deck = shuffleArray(data.allClues || []);
+        const rawClues: string[] = (data.allClues as string[]) || [];
+        const deck: string[] = shuffleArray(rawClues);
         setUserDeck(deck);
-        setUnlockedClues([deck[0]]);
+        setUnlockedClues([deck[0] || "No clue available"]);
         setClueNumber(1);
 
         const initialProgress: StoredGameProgress = {
@@ -161,14 +164,14 @@ export default function Home() {
           clueNumber: 1,
           attempts: [],
           userDeck: deck,
-          unlockedClues: [deck[0]],
+          unlockedClues: [deck[0] || "No clue available"],
           hasWon: false,
           hasLost: false,
           solution: null,
         };
         localStorage.setItem(`40clues_progress_${today}`, JSON.stringify(initialProgress));
       }
-    } catch {
+    } catch (err) {
       setMessage("Network error while loading game.");
     } finally {
       setIsLoading(false);
@@ -334,7 +337,7 @@ export default function Home() {
           }, 150);
         }
       }
-    } catch {
+    } catch (err) {
       setMessage("Error checking answer. Try again.");
     } finally {
       setIsSubmitting(false);
