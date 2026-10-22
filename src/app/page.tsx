@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Sparkles, HelpCircle, Trophy, RefreshCw, Loader2, Share2, Check, Flame } from "lucide-react";
+import { Sparkles, HelpCircle, Trophy, Loader2, Share2, Check, Flame, LogIn, LogOut } from "lucide-react";
 import MovieSearchInput from "@/components/MovieSearchInput";
+import LeaderboardModal from "@/components/LeaderboardModal";
+import { createBrowserClient } from "@supabase/ssr";
 
 interface StoredGameProgress {
   gameDate: string;
@@ -26,13 +28,30 @@ export default function Home() {
   const [gameDate, setGameDate] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
 
+  const [user, setUser] = useState<any>(null);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasCopied, setHasCopied] = useState(false);
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
     initGame();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const initGame = async () => {
@@ -71,6 +90,32 @@ export default function Home() {
       setMessage("Network error while loading game.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  const syncScoreToDatabase = async (cluesUsed: number, score: number) => {
+    try {
+      await fetch("/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameDate, cluesUsed, score }),
+      });
+    } catch (err) {
+      console.error("Failed to sync score:", err);
     }
   };
 
@@ -132,7 +177,11 @@ export default function Home() {
         setMessage("Correct! Brilliant deduction!");
         confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
         updateStreakOnWin();
+        const score = calculateScore(clueNumber);
         saveProgress(clueNumber, attempts, unlockedClues, true, false, sol);
+        if (user) {
+          syncScoreToDatabase(clueNumber, score);
+        }
       } else {
         const newAttempts = [selectedTitle, ...attempts];
         setAttempts(newAttempts);
@@ -181,17 +230,48 @@ export default function Home() {
           </h1>
           <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Cinema Edition</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {streak > 0 && (
             <div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-950/60 border border-orange-800/80 px-2.5 py-1.5 rounded-full">
               <Flame className="w-3.5 h-3.5 fill-orange-400" />
               <span>{streak}</span>
             </div>
           )}
-          <div className="flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
-            <HelpCircle className="w-4 h-4 text-amber-400" />
-            <span>Clue {clueNumber} / {totalClues}</span>
-          </div>
+
+          <button
+            onClick={() => setIsLeaderboardOpen(true)}
+            className="p-1.5 rounded-full bg-slate-900 border border-slate-800 text-amber-400 hover:bg-slate-800 transition-colors"
+            title="Daily Leaderboard"
+          >
+            <Trophy className="w-4 h-4" />
+          </button>
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              {user.user_metadata?.avatar_url && (
+                <img
+                  src={user.user_metadata.avatar_url}
+                  alt="Profile"
+                  className="w-7 h-7 rounded-full border border-slate-700"
+                />
+              )}
+              <button
+                onClick={handleSignOut}
+                className="text-xs text-slate-400 hover:text-slate-200 p-1.5"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleGoogleLogin}
+              className="flex items-center gap-1.5 text-xs bg-slate-900 border border-slate-800 hover:border-slate-700 px-3 py-1.5 rounded-full text-slate-200 transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5 text-amber-400" />
+              <span>Sign in</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -268,7 +348,16 @@ export default function Home() {
               </div>
             )}
 
-            {/* Share Button */}
+            {!user && hasWon && (
+              <button
+                onClick={handleGoogleLogin}
+                className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-colors"
+              >
+                <LogIn className="w-4 h-4 text-amber-400" />
+                <span>Sign in with Google to enter Leaderboard</span>
+              </button>
+            )}
+
             <button
               onClick={handleShare}
               className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
@@ -327,6 +416,12 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      <LeaderboardModal
+        isOpen={isLeaderboardOpen}
+        onClose={() => setIsLeaderboardOpen(false)}
+        gameDate={gameDate}
+      />
     </main>
   );
 }
