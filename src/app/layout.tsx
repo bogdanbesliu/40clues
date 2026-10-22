@@ -8,9 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://40clues.com"),
-  title: "40clues.com (Guess the movie in 40 clues!)",
+  title: "40Clues: Daily Cinema Deduction Game",
   description:
-    "40 clues. One movie. Test your film knowledge daily with 40 randomized witty clues. Can you deduce today's secret film?",
+    "40 randomized clues. One secret movie. Test your film knowledge daily from absurd background trivia to iconic quotes. Can you deduce today's film?",
   keywords: [
     "movie trivia",
     "wordle for movies",
@@ -22,32 +22,46 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "Bogdan Besliu" }],
   openGraph: {
-    title: "40clues.com (Guess the movie in 40 clues!)",
+    title: "40Clues: Daily Cinema Deduction Game",
     description:
-      "40 randomized clues. From absurd background trivia to iconic quotes. Guess the movie in as few clues as possible!",
+      "40 randomized clues. From absurd details to iconic quotes. Guess the movie in as few clues as possible!",
     url: "https://40clues.com",
-    siteName: "40clues.com",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "40clues.com (Guess the movie in 40 clues!)",
-      },
-    ],
+    siteName: "40Clues",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "40clues.com (Guess the movie in 40 clues!)",
+    title: "40Clues: Daily Cinema Deduction Game",
     description:
       "40 clues. One movie. Can you deduce today's secret film before running out of clues?",
-    images: ["/og-image.png"],
   },
   icons: {
     icon: "/icon.svg",
     apple: "/apple-touch-icon.png",
+  },
+};
+
+// Datele structurate pentru Google & AI Search (JSON-LD)
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "40Clues",
+  applicationCategory: "GameApplication",
+  genre: "Trivia / Deduction Game",
+  browserRequirements: "Requires JavaScript",
+  operatingSystem: "All",
+  url: "https://40clues.com",
+  description:
+    "Daily cinema deduction trivia game. Guess the secret film from 40 randomized witty clues.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  author: {
+    "@type": "Person",
+    name: "Bogdan Besliu",
   },
 };
 
@@ -59,8 +73,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between`}>
+        {/* Date structurate citite de Googlebot și boții de AI */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+
         {children}
-        {/* Modulul de monitorizare activ */}
+
+        {/* Monitorizare activă Vercel */}
         <Analytics />
         <SpeedInsights />
       </body>
