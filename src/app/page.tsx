@@ -714,6 +714,22 @@ export default function Home() {
         isOpen={isHowToPlayOpen}
         onClose={() => setIsHowToPlayOpen(false)}
       />
+
+      {/* Footer cu Copyright Bogdan Besliu 2026 și Link Privacy */}
+      <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
+        <div>
+          © Bogdan Besliu 2026. All rights reserved.
+        </div>
+        <div className="flex items-center gap-4">
+          <a
+            href="/privacy"
+            className="hover:text-amber-400 transition-colors underline underline-offset-4"
+          >
+            Privacy Policy
+          </a>
+        </div>
+      </footer>
+      
     </main>
   );
 }
