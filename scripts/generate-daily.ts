@@ -1,7 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 
-// Funcție ajutătoare pentru instanțiere Supabase și Gemini în mediul curent
 function getClients() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const supabaseServiceKey =
@@ -23,7 +22,7 @@ function getClients() {
   return { supabase, ai, tmdbApiKey };
 }
 
-// Funcție care extrage un film aleatoriu dar relevant din TMDB
+// Funcție care extrage un film aleatoriu dar recunoscut din TMDB (Top Rated / Popular)
 async function fetchRandomPopularMovie(tmdbApiKey: string) {
   const randomPage = Math.floor(Math.random() * 25) + 1;
   const url = `https://api.themoviedb.org/3/discover/movie?api_key=${tmdbApiKey}&language=en-US&sort_by=vote_count.desc&include_adult=false&vote_average.gte=6.5&vote_count.gte=1000&page=${randomPage}`;
@@ -51,13 +50,12 @@ async function fetchRandomPopularMovie(tmdbApiKey: string) {
   };
 }
 
-// EXPORTĂ funcția pentru a putea fi apelată de cron
 export async function runDailyGenerator() {
   const { supabase, ai, tmdbApiKey } = getClients();
 
   console.log("🎬 Fetching movie from TMDB API...");
 
-  // 1. Verificăm filmele deja jucate din Supabase
+  // 1. Verificăm filmele deja rulate în Supabase pentru a preveni repetarea
   const { data: playedGames } = await supabase.from("daily_games").select("title");
   const playedTitles = new Set(playedGames?.map((g) => g.title.toLowerCase()) || []);
 
@@ -78,14 +76,14 @@ export async function runDailyGenerator() {
 
   console.log(`🎯 Selected Movie: "${selectedMovie.title}" (${selectedMovie.year})`);
 
-  // 2. Promptul calibrat
+  // 2. Promptul calibrat conform mixului stabilit în Game Design
   const prompt = `
 You are generating clues for "40Clues", a daily cinema trivia game.
 Target Movie: "${selectedMovie.title}" (${selectedMovie.year})
 Overview context: "${selectedMovie.overview}"
 
 Generate EXACTLY 40 clues in English according to this distribution:
-- 24 clues (60%): Genuinely helpful clues about plot points, key props, scene events, or director decisions.
+- 24 clues (60%): Genuinely helpful clues about plot points, key props, scene events, or dilemmas.
 - 4 clues (10%): Completely irrelevant, absurdly specific, or hilarious background trivia that is 100% factual in the movie (e.g. background prop, number of items, weather anomaly).
 - 4 clues (10%): Contextual trivia, behind-the-scenes stories, budget quirks, or viral pop culture memes born from the movie.
 - 4 clues (10%): Memorable or funny quotes and dialogue lines taken completely out of context.
@@ -101,33 +99,62 @@ STRICT RULES:
 
   console.log("🤖 Generating 40 clues using Gemini...");
 
-  const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          clues: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "Array of exactly 40 shuffled clues",
-          },
-        },
-        required: ["clues"],
-      },
-    },
-  });
+  // Listă de modele alternative și încercări succesive în caz de 503 High Demand
+  const candidateModels = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
+  let responseText = "";
+  let lastError: any = null;
 
-  const parsed = JSON.parse(response.text || "{}");
+  for (const modelName of candidateModels) {
+    for (let retry = 0; retry < 2; retry++) {
+      try {
+        console.log(`Calling ${modelName} (attempt ${retry + 1})...`);
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                clues: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING },
+                  description: "Array of exactly 40 shuffled clues",
+                },
+              },
+              required: ["clues"],
+            },
+          },
+        });
+
+        if (response && response.text) {
+          responseText = response.text;
+          break;
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`Model ${modelName} attempt ${retry + 1} failed:`, err?.message || err);
+        // Pauză de 2 secunde înainte de reîncercare
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
+    if (responseText) break;
+  }
+
+  if (!responseText) {
+    throw new Error(
+      `All Gemini attempts failed due to demand spikes: ${lastError?.message || "Unavailable"}`
+    );
+  }
+
+  const parsed = JSON.parse(responseText || "{}");
   const clues: string[] = parsed.clues || [];
 
   if (clues.length !== 40) {
     console.warn(`⚠️ Warning: LLM generated ${clues.length} clues instead of 40.`);
   }
 
-  // 3. Salvare în Supabase
+  // 3. Salvare în tabela Supabase `daily_games` pentru data curentă
   const today = new Date().toISOString().split("T")[0];
 
   const { error } = await supabase.from("daily_games").upsert(
@@ -145,18 +172,13 @@ STRICT RULES:
     throw new Error(`Supabase Upsert Error: ${error.message}`);
   }
 
+  console.log(`✅ SUCCESS! Saved "${selectedMovie.title}" (${selectedMovie.year}) for ${today}`);
+
   return {
     success: true,
     movie: selectedMovie.title,
     year: selectedMovie.year,
-    cluesCount: clues.length,
+    cluesCount: Math.min(clues.length, 40),
     gameDate: today,
   };
-}
-
-// Permite rularea manuală din terminal când se rulează `npx ts-node scripts/generate-daily.ts`
-if (require.main === module) {
-  runDailyGenerator()
-    .then((res) => console.log("✅ Done:", res))
-    .catch(console.error);
 }
