@@ -13,9 +13,12 @@ import {
   ChevronDown,
   ChevronUp,
   Film,
+  HelpCircle,
+  FastForward,
 } from "lucide-react";
 import MovieSearchInput from "@/components/MovieSearchInput";
 import LeaderboardModal from "@/components/LeaderboardModal";
+import HowToPlayModal from "@/components/HowToPlayModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 
@@ -48,6 +51,7 @@ export default function Home() {
 
   const [user, setUser] = useState<any>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -81,7 +85,6 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Animație Count-Up pentru scorul de victorie
   useEffect(() => {
     if (hasWon) {
       const targetScore = calculateScore(clueNumber);
@@ -227,8 +230,42 @@ export default function Home() {
     setTimeout(() => setIsShakeActive(false), 500);
   };
 
+  const handleSkipClue = async () => {
+    if (hasWon || hasLost || isSubmitting || clueNumber >= totalClues) return;
+
+    setIsSubmitting(true);
+    try {
+      const nextNum = clueNumber + 1;
+      const res = await fetch(`/api/game?clue=${nextNum}`);
+      const data = await res.json();
+
+      if (data.clue) {
+        setIsClueFading(true);
+        setTimeout(() => {
+          const newUnlocked = [...unlockedClues, data.clue];
+          setClueNumber(nextNum);
+          setUnlockedClues(newUnlocked);
+          setIsClueFading(false);
+          setMessage("Clue skipped (-25 pts)");
+          saveProgress(nextNum, attempts, newUnlocked, false, false, null);
+        }, 150);
+      }
+    } catch {
+      setMessage("Error unlocking next clue.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleMovieGuess = async (selectedTitle: string) => {
     if (!selectedTitle || hasWon || hasLost || isSubmitting) return;
+
+    // Prevenire ghiciri duplicate
+    if (attempts.some((a) => a.toLowerCase() === selectedTitle.toLowerCase())) {
+      setMessage(`You already tried "${selectedTitle}"! Pick another film.`);
+      triggerErrorShake();
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -294,7 +331,13 @@ export default function Home() {
 
   const handleShare = () => {
     const finalScore = calculateScore(clueNumber);
-    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues used\n🏆 ${finalScore} pts\n🔥 ${streak}-day streak\n\nhttps://40clues.com`;
+    // Grid vizual tip Wordle (pătrățele în funcție de performanță)
+    const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
+    const greenBlock = "🟩";
+    const blackBlock = "⬛";
+    const emojiGrid = greenBlock.repeat(Math.max(1, 6 - blocksCount)) + blackBlock.repeat(blocksCount - 1);
+
+    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues\n🏆 ${finalScore} pts\n🔥 ${streak}-day streak\n${emojiGrid}\n\nhttps://40clues.com`;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(shareText);
@@ -303,39 +346,49 @@ export default function Home() {
     }
   };
 
+  const currentPotentialScore = calculateScore(clueNumber);
   const progressPercent = Math.min(100, Math.round((clueNumber / totalClues) * 100));
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-8 font-sans selection:bg-amber-500/30">
+    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-6 sm:py-8 font-sans selection:bg-amber-500/30">
       {/* Header */}
       <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800/80 pb-4 mb-3">
         <div>
-          <h1 className="text-3xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
             40Clues
           </h1>
-          <p className="text-[11px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">
+          <p className="text-[10px] sm:text-[11px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">
             Cinema Edition
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {streak > 0 && (
             <div
-              className="flex items-center gap-1.5 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 px-3 py-2 rounded-full shadow-sm"
+              className="flex items-center gap-1 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 px-2.5 py-1.5 rounded-full shadow-sm"
               title={`${streak}-day win streak`}
             >
-              <Flame className="w-4 h-4 fill-orange-400 text-orange-400" aria-hidden="true" />
+              <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" aria-hidden="true" />
               <span>{streak}</span>
             </div>
           )}
 
           <button
+            onClick={() => setIsHowToPlayOpen(true)}
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 focus:outline-none transition-all"
+            title="How to play"
+            aria-label="How to play"
+          >
+            <HelpCircle className="w-4 h-4" aria-hidden="true" />
+          </button>
+
+          <button
             onClick={() => setIsLeaderboardOpen(true)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 focus:outline-none focus:ring-2 focus:ring-amber-400/50 transition-all"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 focus:outline-none transition-all"
             title="Open Daily Leaderboard"
             aria-label="Open Daily Leaderboard"
           >
-            <Trophy className="w-5 h-5" aria-hidden="true" />
+            <Trophy className="w-4 h-4" aria-hidden="true" />
           </button>
 
           {user ? (
@@ -345,14 +398,14 @@ export default function Home() {
                   src={user.user_metadata.avatar_url}
                   alt=""
                   aria-hidden="true"
-                  className="w-9 h-9 rounded-full border border-slate-600 object-cover"
+                  className="w-8 h-8 rounded-full border border-slate-600 object-cover"
                 />
               )}
               <button
                 onClick={handleSignOut}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-300 hover:text-slate-100 hover:bg-slate-900 active:scale-95 rounded-full focus:outline-none focus:ring-2 focus:ring-slate-500/50 transition-all"
-                title="Sign out of account"
-                aria-label="Sign out of account"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-slate-100 active:scale-95 rounded-full transition-all"
+                title="Sign out"
+                aria-label="Sign out"
               >
                 <LogOut className="w-4 h-4" aria-hidden="true" />
               </button>
@@ -360,22 +413,22 @@ export default function Home() {
           ) : (
             <button
               onClick={handleGoogleLogin}
-              className="min-h-[44px] flex items-center gap-2 text-xs font-semibold bg-slate-900 border border-slate-700 hover:border-slate-600 hover:bg-slate-800/80 active:scale-95 px-3.5 rounded-full text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
+              className="min-h-[40px] flex items-center gap-1.5 text-xs font-semibold bg-slate-900 border border-slate-700 hover:border-slate-600 active:scale-95 px-3 rounded-full text-slate-100 transition-all"
             >
-              <LogIn className="w-4 h-4 text-amber-400" aria-hidden="true" />
-              <span>Sign in</span>
+              <LogIn className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+              <span className="hidden xs:inline">Sign in</span>
             </button>
           )}
         </div>
       </header>
 
       {/* Visual Clue Progress Bar */}
-      <div className="max-w-xl w-full mb-6">
+      <div className="max-w-xl w-full mb-5">
         <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1.5">
           <span>
             Clue {clueNumber} of {totalClues}
           </span>
-          <span className="text-amber-400">{calculateScore(clueNumber)} pts left</span>
+          <span className="text-amber-400">{currentPotentialScore} pts left</span>
         </div>
         <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/80">
           <div
@@ -392,7 +445,7 @@ export default function Home() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-xl w-full flex flex-col gap-6">
+      <div className="max-w-xl w-full flex flex-col gap-5">
         {/* Active Clue Card / Skeleton Screen */}
         {isLoading ? (
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 min-h-[160px] animate-pulse flex flex-col justify-between">
@@ -409,9 +462,8 @@ export default function Home() {
         ) : (
           <section
             aria-labelledby="active-clue-heading"
-            className="relative overflow-hidden bg-slate-900/95 border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur min-h-[160px] flex flex-col justify-between transition-all"
+            className="relative overflow-hidden bg-slate-900/95 border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur min-h-[160px] flex flex-col justify-between transition-all"
           >
-            {/* Header-ul cardului cu Micro-badge-ul de categorie */}
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span
@@ -436,22 +488,22 @@ export default function Home() {
               </div>
 
               <span className="bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-md text-amber-300 font-bold text-xs flex-shrink-0 shadow-inner">
-                {calculateScore(clueNumber)} pts
+                {currentPotentialScore} pts
               </span>
             </div>
 
             <p
               aria-live="polite"
-              className={`text-lg md:text-xl font-medium text-slate-100 leading-relaxed italic my-auto transition-all duration-200 ${
+              className={`text-base sm:text-xl font-medium text-slate-100 leading-relaxed italic my-auto transition-all duration-200 ${
                 isClueFading ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"
               }`}
             >
               "{unlockedClues[unlockedClues.length - 1]}"
             </p>
 
-            <div className="mt-3 text-[11px] text-slate-300 flex items-center justify-between">
-              <span>{attempts.length} incorrect attempts</span>
-              <span className="text-amber-500/80">40 total clues available</span>
+            <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
+              <span>{attempts.length} attempts</span>
+              <span className="text-amber-500/80">40 total clues</span>
             </div>
           </section>
         )}
@@ -461,7 +513,7 @@ export default function Home() {
           <div
             role="status"
             aria-live="polite"
-            className={`p-3.5 rounded-xl text-sm font-semibold text-center transition-all shadow-md ${
+            className={`p-3 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all shadow-md ${
               hasWon
                 ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-200"
                 : hasLost
@@ -473,21 +525,35 @@ export default function Home() {
           </div>
         )}
 
-        {/* Search Input / Enhanced Final Victory Card */}
+        {/* Input & Skip Button Row */}
         {!hasWon && !hasLost ? (
-          <MovieSearchInput
-            disabled={isLoading || isSubmitting}
-            isErrorShake={isShakeActive}
-            onSelectMovie={handleMovieGuess}
-          />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <MovieSearchInput
+                disabled={isLoading || isSubmitting}
+                isErrorShake={isShakeActive}
+                onSelectMovie={handleMovieGuess}
+              />
+              <button
+                type="button"
+                onClick={handleSkipClue}
+                disabled={isLoading || isSubmitting || clueNumber >= totalClues}
+                className="min-h-[48px] px-3.5 bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700/80 rounded-xl text-slate-300 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 disabled:opacity-40"
+                title="Skip to next clue (-25 pts)"
+              >
+                <FastForward className="w-4 h-4" />
+                <span className="hidden sm:inline">Pass (-25 pts)</span>
+              </button>
+            </div>
+          </div>
         ) : (
           <section
             aria-label="Game Result"
-            className="bg-slate-900 border border-slate-800/90 p-6 md:p-8 rounded-2xl text-center flex flex-col items-center gap-5 shadow-2xl"
+            className="bg-slate-900 border border-slate-800/90 p-5 sm:p-7 rounded-2xl text-center flex flex-col items-center gap-4 sm:gap-5 shadow-2xl"
           >
             <div className="flex flex-col items-center">
-              <span className="text-4xl mb-2">{hasWon ? "🎉" : "🎬"}</span>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-100">
+              <span className="text-4xl mb-1">{hasWon ? "🎉" : "🎬"}</span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100">
                 {hasWon ? "Cinema Mastermind!" : "Game Over"}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
@@ -499,15 +565,15 @@ export default function Home() {
 
             {/* Poster & Movie Title Reveal */}
             {solution && (
-              <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950/80 border border-slate-800 p-4 rounded-xl w-full">
+              <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl w-full">
                 {solution.poster ? (
                   <img
                     src={solution.poster}
                     alt={solution.title}
-                    className="w-24 h-36 object-cover rounded-lg shadow-lg border border-slate-700 flex-shrink-0"
+                    className="w-20 sm:w-24 h-30 sm:h-36 object-cover rounded-lg shadow-lg border border-slate-700 flex-shrink-0"
                   />
                 ) : (
-                  <div className="w-24 h-36 bg-slate-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-700">
+                  <div className="w-20 sm:w-24 h-30 sm:h-36 bg-slate-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-700">
                     <Film className="w-8 h-8 text-slate-500" />
                   </div>
                 )}
@@ -515,32 +581,32 @@ export default function Home() {
                   <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">
                     Target Film
                   </span>
-                  <h3 className="text-xl font-bold text-slate-100">{solution.title}</h3>
-                  <span className="text-sm text-slate-400 font-medium">
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-100">{solution.title}</h3>
+                  <span className="text-xs sm:text-sm text-slate-400 font-medium">
                     Released in {solution.year}
                   </span>
                 </div>
               </div>
             )}
 
-            {/* 3-Column Stats Grid cu Count-up */}
+            {/* Stats Grid */}
             {hasWon && (
-              <div className="grid grid-cols-3 gap-3 w-full">
-                <div className="bg-slate-950/60 border border-slate-800/80 p-3 rounded-xl flex flex-col items-center">
+              <div className="grid grid-cols-3 gap-2.5 w-full">
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Score</span>
-                  <span className="text-2xl font-black text-amber-400 mt-0.5">
+                  <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">
                     {animatedScore}
                   </span>
                 </div>
-                <div className="bg-slate-950/60 border border-slate-800/80 p-3 rounded-xl flex flex-col items-center">
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Clues Used</span>
-                  <span className="text-2xl font-black text-slate-200 mt-0.5">
+                  <span className="text-xl sm:text-2xl font-black text-slate-200 mt-0.5">
                     {clueNumber}
                   </span>
                 </div>
-                <div className="bg-slate-950/60 border border-slate-800/80 p-3 rounded-xl flex flex-col items-center">
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Streak</span>
-                  <span className="text-2xl font-black text-orange-400 mt-0.5">
+                  <span className="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">
                     {streak}🔥
                   </span>
                 </div>
@@ -548,7 +614,7 @@ export default function Home() {
             )}
 
             {hasWon && (
-              <div className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3.5 py-1.5 rounded-full">
+              <div className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full">
                 {getRankBadge(clueNumber)}
               </div>
             )}
@@ -556,16 +622,16 @@ export default function Home() {
             {!user && hasWon && (
               <button
                 onClick={handleGoogleLogin}
-                className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-semibold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs active:scale-95 transition-all shadow-sm"
+                className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs active:scale-95 transition-all shadow-sm"
               >
                 <LogIn className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                <span>Sign in with Google to enter Leaderboard</span>
+                <span>Save streak & join Leaderboard with Google</span>
               </button>
             )}
 
             <button
               onClick={handleShare}
-              className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+              className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none"
             >
               {hasCopied ? (
                 <>
@@ -589,22 +655,18 @@ export default function Home() {
               type="button"
               onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
               aria-expanded={isHistoryExpanded}
-              aria-controls="unlocked-clues-section"
               className="min-h-[44px] w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-900/60 transition-colors"
             >
               <span>Previous Unlocked Clues ({unlockedClues.length - 1})</span>
               {isHistoryExpanded ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                <ChevronUp className="w-4 h-4 text-slate-400" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" aria-hidden="true" />
+                <ChevronDown className="w-4 h-4 text-slate-400" />
               )}
             </button>
 
             {isHistoryExpanded && (
-              <div
-                id="unlocked-clues-section"
-                className="flex flex-col gap-2 p-3 border-t border-slate-800/80 max-h-56 overflow-y-auto"
-              >
+              <div className="flex flex-col gap-2 p-3 border-t border-slate-800/80">
                 {unlockedClues
                   .slice(0, -1)
                   .reverse()
@@ -621,23 +683,21 @@ export default function Home() {
           </div>
         )}
 
-        {/* Incorrect Guesses History */}
+        {/* Incorrect Guesses - Pill Badges on Mobile */}
         {attempts.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
               Incorrect guesses ({attempts.length})
             </span>
-            <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
+            <div className="flex flex-wrap gap-1.5">
               {attempts.map((attempt, idx) => (
-                <div
+                <span
                   key={idx}
-                  className="bg-slate-900/80 border border-slate-800/90 px-4 py-2.5 rounded-lg text-sm flex items-center justify-between text-slate-300"
+                  className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm"
                 >
-                  <span className="font-medium text-slate-200">{attempt}</span>
-                  <span className="text-xs font-semibold text-rose-400 bg-rose-950/50 border border-rose-900/80 px-2 py-0.5 rounded">
-                    Incorrect
-                  </span>
-                </div>
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  {attempt}
+                </span>
               ))}
             </div>
           </div>
@@ -648,6 +708,11 @@ export default function Home() {
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         gameDate={gameDate}
+      />
+
+      <HowToPlayModal
+        isOpen={isHowToPlayOpen}
+        onClose={() => setIsHowToPlayOpen(false)}
       />
     </main>
   );

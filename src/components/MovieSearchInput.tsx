@@ -51,19 +51,23 @@ export default function MovieSearchInput({
       } finally {
         setIsLoading(false);
       }
-    }, 300);
+    }, 250);
 
     return () => clearTimeout(delayDebounce);
   }, [query]);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(event: MouseEvent | TouchEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
   }, []);
 
   const handleSelect = (title: string) => {
@@ -135,7 +139,9 @@ export default function MovieSearchInput({
           onFocus={() => suggestions.length > 0 && setIsOpen(true)}
           placeholder="Search movie title (e.g. Inception)..."
           className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-12 pr-16 py-3.5 text-base text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/70 focus:border-amber-500 transition-all shadow-inner disabled:opacity-50"
-          autoFocus
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck="false"
         />
 
         <div className="absolute right-3.5 flex items-center gap-1.5 pointer-events-none">
@@ -154,7 +160,7 @@ export default function MovieSearchInput({
           id="movie-suggestions-list"
           role="listbox"
           aria-label="Suggested movie titles"
-          className="absolute z-50 left-0 right-0 mt-2 bg-slate-900/95 border border-slate-700 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-md overflow-hidden max-h-72 overflow-y-auto"
+          className="absolute z-50 left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.9)] backdrop-blur-md overflow-hidden max-h-60 overflow-y-auto"
         >
           {suggestions.map((movie, index) => {
             const isSelected = index === selectedIndex;
@@ -164,11 +170,14 @@ export default function MovieSearchInput({
                 id={`suggestion-${movie.id}`}
                 role="option"
                 aria-selected={isSelected}
-                onClick={() => handleSelect(movie.title)}
-                className={`w-full flex items-center gap-3.5 px-4 py-2.5 cursor-pointer text-left transition-colors border-b border-slate-800/60 last:border-b-0 ${
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  handleSelect(movie.title);
+                }}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer text-left transition-colors border-b border-slate-800/60 last:border-b-0 min-h-[48px] ${
                   isSelected
                     ? "bg-amber-500/20 text-amber-200"
-                    : "hover:bg-slate-800/80 text-slate-200"
+                    : "hover:bg-slate-800/80 active:bg-slate-800 text-slate-200"
                 }`}
               >
                 {movie.poster ? (
@@ -176,11 +185,11 @@ export default function MovieSearchInput({
                     src={movie.poster}
                     alt=""
                     aria-hidden="true"
-                    className="w-8 h-12 object-cover rounded shadow bg-slate-800 flex-shrink-0"
+                    className="w-7 h-10 object-cover rounded bg-slate-800 flex-shrink-0"
                   />
                 ) : (
                   <div
-                    className="w-8 h-12 bg-slate-800 rounded flex items-center justify-center flex-shrink-0"
+                    className="w-7 h-10 bg-slate-800 rounded flex items-center justify-center flex-shrink-0"
                     aria-hidden="true"
                   >
                     <Film className="w-4 h-4 text-slate-400" />
@@ -191,7 +200,7 @@ export default function MovieSearchInput({
                     {movie.title}
                   </span>
                   {movie.year && (
-                    <span className="text-xs text-slate-300 font-medium">{movie.year}</span>
+                    <span className="text-xs text-slate-400 font-medium">{movie.year}</span>
                   )}
                 </div>
               </li>
