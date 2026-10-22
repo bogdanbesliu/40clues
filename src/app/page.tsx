@@ -2,42 +2,97 @@
 
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
-import { Sparkles, HelpCircle, Trophy, RefreshCw, Loader2 } from "lucide-react";
+import { Sparkles, HelpCircle, Trophy, RefreshCw, Loader2, Share2, Check, Flame } from "lucide-react";
+import MovieSearchInput from "@/components/MovieSearchInput";
+
+interface StoredGameProgress {
+  gameDate: string;
+  clueNumber: number;
+  attempts: string[];
+  unlockedClues: string[];
+  hasWon: boolean;
+  hasLost: boolean;
+  solution: { title: string; year: number } | null;
+}
 
 export default function Home() {
   const [clueNumber, setClueNumber] = useState<number>(1);
   const [totalClues, setTotalClues] = useState<number>(40);
-  const [currentClue, setCurrentClue] = useState<string>("");
-  const [guess, setGuess] = useState("");
+  const [unlockedClues, setUnlockedClues] = useState<string[]>([]);
   const [attempts, setAttempts] = useState<string[]>([]);
   const [hasWon, setHasWon] = useState(false);
   const [hasLost, setHasLost] = useState(false);
   const [solution, setSolution] = useState<{ title: string; year: number } | null>(null);
+  const [gameDate, setGameDate] = useState<string>("");
+  const [streak, setStreak] = useState<number>(0);
+
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasCopied, setHasCopied] = useState(false);
 
   useEffect(() => {
-    fetchClue(1);
+    initGame();
   }, []);
 
-  const fetchClue = async (number: number) => {
+  const initGame = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/game?clue=${number}`);
+      const res = await fetch("/api/game?clue=1");
       const data = await res.json();
-      if (res.ok) {
-        setCurrentClue(data.clue);
-        setTotalClues(data.totalClues);
-        setClueNumber(data.currentClueNumber);
-      } else {
+
+      if (!res.ok) {
         setMessage("Could not load today's game. Check Supabase connection.");
+        setIsLoading(false);
+        return;
+      }
+
+      const today = data.gameDate;
+      setGameDate(today);
+      setTotalClues(data.totalClues);
+
+      const savedStreak = parseInt(localStorage.getItem("40clues_streak") || "0", 10);
+      setStreak(savedStreak);
+
+      const savedLocal = localStorage.getItem(`40clues_progress_${today}`);
+      if (savedLocal) {
+        const parsed: StoredGameProgress = JSON.parse(savedLocal);
+        setClueNumber(parsed.clueNumber);
+        setAttempts(parsed.attempts || []);
+        setUnlockedClues(parsed.unlockedClues || []);
+        setHasWon(parsed.hasWon);
+        setHasLost(parsed.hasLost);
+        setSolution(parsed.solution);
+      } else {
+        setUnlockedClues([data.clue]);
+        setClueNumber(1);
       }
     } catch {
       setMessage("Network error while loading game.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const saveProgress = (
+    nextClueNum: number,
+    newAttempts: string[],
+    newUnlockedClues: string[],
+    won: boolean,
+    lost: boolean,
+    sol: { title: string; year: number } | null
+  ) => {
+    if (!gameDate) return;
+    const progress: StoredGameProgress = {
+      gameDate,
+      clueNumber: nextClueNum,
+      attempts: newAttempts,
+      unlockedClues: newUnlockedClues,
+      hasWon: won,
+      hasLost: lost,
+      solution: sol,
+    };
+    localStorage.setItem(`40clues_progress_${gameDate}`, JSON.stringify(progress));
   };
 
   const calculateScore = (cluesUsed: number) => {
@@ -52,47 +107,73 @@ export default function Home() {
     return "🪢 By the Skin of Your Teeth";
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!guess.trim() || hasWon || hasLost || isSubmitting) return;
+  const updateStreakOnWin = () => {
+    const newStreak = streak + 1;
+    setStreak(newStreak);
+    localStorage.setItem("40clues_streak", newStreak.toString());
+  };
+
+  const handleMovieGuess = async (selectedTitle: string) => {
+    if (!selectedTitle || hasWon || hasLost || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
       const res = await fetch("/api/guess", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guess: guess.trim(), clueNumber }),
+        body: JSON.stringify({ guess: selectedTitle, clueNumber, gameDate }),
       });
       const data = await res.json();
 
-      setAttempts((prev) => [guess.trim(), ...prev]);
-
       if (data.correct) {
         setHasWon(true);
-        setSolution({ title: data.title, year: data.year });
+        const sol = { title: data.title, year: data.year };
+        setSolution(sol);
         setMessage("Correct! Brilliant deduction!");
         confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+        updateStreakOnWin();
+        saveProgress(clueNumber, attempts, unlockedClues, true, false, sol);
       } else {
+        const newAttempts = [selectedTitle, ...attempts];
+        setAttempts(newAttempts);
+
         if (data.gameOver) {
           setHasLost(true);
           setSolution(data.solution);
           setMessage(`Game over! The movie was: ${data.solution.title} (${data.solution.year})`);
+          localStorage.setItem("40clues_streak", "0");
+          setStreak(0);
+          saveProgress(clueNumber, newAttempts, unlockedClues, false, true, data.solution);
         } else {
-          setClueNumber((prev) => prev + 1);
-          setCurrentClue(data.nextClue);
+          const nextNum = clueNumber + 1;
+          const newUnlocked = [...unlockedClues, data.nextClue];
+          setClueNumber(nextNum);
+          setUnlockedClues(newUnlocked);
           setMessage("Incorrect! Next clue unlocked.");
+          saveProgress(nextNum, newAttempts, newUnlocked, false, false, null);
         }
       }
     } catch {
       setMessage("Error checking answer. Try again.");
     } finally {
       setIsSubmitting(false);
-      setGuess("");
+    }
+  };
+
+  const handleShare = () => {
+    const finalScore = calculateScore(clueNumber);
+    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues used\n🏆 ${finalScore} pts\n🔥 ${streak}-day streak\n\nhttps://40clues.com`;
+
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareText);
+      setHasCopied(true);
+      setTimeout(() => setHasCopied(false), 2500);
     }
   };
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-8 font-sans">
+      {/* Header */}
       <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
@@ -100,13 +181,23 @@ export default function Home() {
           </h1>
           <p className="text-xs uppercase tracking-widest text-slate-400 font-semibold">Cinema Edition</p>
         </div>
-        <div className="flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
-          <HelpCircle className="w-4 h-4 text-amber-400" />
-          <span>Clue {clueNumber} / {totalClues}</span>
+        <div className="flex items-center gap-3">
+          {streak > 0 && (
+            <div className="flex items-center gap-1 text-xs font-bold text-orange-400 bg-orange-950/60 border border-orange-800/80 px-2.5 py-1.5 rounded-full">
+              <Flame className="w-3.5 h-3.5 fill-orange-400" />
+              <span>{streak}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-xs bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
+            <HelpCircle className="w-4 h-4 text-amber-400" />
+            <span>Clue {clueNumber} / {totalClues}</span>
+          </div>
         </div>
       </header>
 
+      {/* Main Container */}
       <div className="max-w-xl w-full flex flex-col gap-6">
+        {/* Active Clue Card */}
         <div className="relative overflow-hidden bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl backdrop-blur min-h-[140px] flex flex-col justify-center">
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 text-slate-400">
@@ -117,17 +208,18 @@ export default function Home() {
             <>
               <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mb-2">
                 <span className="flex items-center gap-1 text-amber-400">
-                  <Sparkles className="w-3.5 h-3.5" /> Clue #{clueNumber}
+                  <Sparkles className="w-3.5 h-3.5" /> Latest Clue #{clueNumber}
                 </span>
                 <span>Current Potential: {calculateScore(clueNumber)} pts</span>
               </div>
               <p className="text-lg md:text-xl font-medium text-slate-100 leading-relaxed italic">
-                "{currentClue}"
+                "{unlockedClues[unlockedClues.length - 1]}"
               </p>
             </>
           )}
         </div>
 
+        {/* Status Message */}
         {message && (
           <div
             className={`p-3 rounded-xl text-sm font-medium text-center transition-all ${
@@ -142,62 +234,86 @@ export default function Home() {
           </div>
         )}
 
+        {/* Search Input / Final Card */}
         {!hasWon && !hasLost ? (
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="text"
-              value={guess}
+          <div className="flex gap-2">
+            <MovieSearchInput
               disabled={isLoading || isSubmitting}
-              onChange={(e) => setGuess(e.target.value)}
-              placeholder="Guess the movie title..."
-              className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 disabled:opacity-50"
-              autoFocus
+              onSelectMovie={handleMovieGuess}
             />
-            <button
-              type="submit"
-              disabled={isLoading || isSubmitting || !guess.trim()}
-              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
-            >
-              {isSubmitting ? "..." : "Guess"}
-            </button>
-          </form>
+          </div>
         ) : (
-          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center flex flex-col items-center gap-3">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center flex flex-col items-center gap-4">
             <Trophy className={`w-12 h-12 ${hasWon ? "text-amber-400" : "text-slate-600"}`} />
-            <h3 className="text-2xl font-bold">
-              {hasWon ? "Movie Solved!" : "Better Luck Tomorrow!"}
-            </h3>
-            {solution && (
-              <p className="text-sm text-slate-400">
-                Title: <strong className="text-slate-200">{solution.title} ({solution.year})</strong>
-              </p>
-            )}
+            <div>
+              <h3 className="text-2xl font-bold">
+                {hasWon ? "Movie Solved!" : "Better Luck Tomorrow!"}
+              </h3>
+              {solution && (
+                <p className="text-sm text-slate-400 mt-1">
+                  Title: <strong className="text-slate-200">{solution.title} ({solution.year})</strong>
+                </p>
+              )}
+            </div>
+
             {hasWon && (
-              <div className="flex flex-col gap-1 items-center bg-slate-950/50 p-3 rounded-xl border border-slate-800 w-full">
+              <div className="flex flex-col gap-1 items-center bg-slate-950/50 p-4 rounded-xl border border-slate-800 w-full">
                 <span className="text-xs text-slate-400">Final Score</span>
-                <span className="text-2xl font-extrabold text-amber-400">
+                <span className="text-3xl font-extrabold text-amber-400">
                   {calculateScore(clueNumber)} pts
                 </span>
-                <span className="text-xs font-semibold text-emerald-400">
+                <span className="text-xs font-semibold text-emerald-400 mt-1">
                   {getRankBadge(clueNumber)}
                 </span>
               </div>
             )}
+
+            {/* Share Button */}
             <button
-              onClick={() => window.location.reload()}
-              className="mt-2 flex items-center gap-2 text-xs text-slate-400 hover:text-slate-200"
+              onClick={handleShare}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> Replay demo
+              {hasCopied ? (
+                <>
+                  <Check className="w-5 h-5 text-white" />
+                  <span>Copied to Clipboard!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-5 h-5" />
+                  <span>Share Result</span>
+                </>
+              )}
             </button>
           </div>
         )}
 
+        {/* All Unlocked Clues History */}
+        {unlockedClues.length > 1 && (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Unlocked clues ({unlockedClues.length})
+            </span>
+            <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+              {unlockedClues.slice(0, -1).reverse().map((c, i) => (
+                <div
+                  key={i}
+                  className="bg-slate-900/40 border border-slate-800/60 p-3 rounded-xl text-xs text-slate-400 italic"
+                >
+                  "{c}"
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Previous Guesses */}
         {attempts.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Previous guesses ({attempts.length})
+              Incorrect guesses ({attempts.length})
             </span>
-            <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto pr-1">
               {attempts.map((attempt, idx) => (
                 <div
                   key={idx}
