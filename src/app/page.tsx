@@ -16,11 +16,13 @@ import {
   HelpCircle,
   FastForward,
 } from "lucide-react";
+import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
 import LeaderboardModal from "@/components/LeaderboardModal";
 import HowToPlayModal from "@/components/HowToPlayModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
+import { shuffleArray } from "@/lib/utils";
 
 interface SolutionData {
   title: string;
@@ -32,6 +34,7 @@ interface StoredGameProgress {
   gameDate: string;
   clueNumber: number;
   attempts: string[];
+  userDeck: string[];
   unlockedClues: string[];
   hasWon: boolean;
   hasLost: boolean;
@@ -41,6 +44,7 @@ interface StoredGameProgress {
 export default function Home() {
   const [clueNumber, setClueNumber] = useState<number>(1);
   const [totalClues, setTotalClues] = useState<number>(40);
+  const [userDeck, setUserDeck] = useState<string[]>([]);
   const [unlockedClues, setUnlockedClues] = useState<string[]>([]);
   const [attempts, setAttempts] = useState<string[]>([]);
   const [hasWon, setHasWon] = useState(false);
@@ -120,11 +124,11 @@ export default function Home() {
   const initGame = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/game?clue=1");
+      const res = await fetch("/api/game");
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage("Could not load today's game. Check Supabase connection.");
+        setMessage("Could not load today's game. Check connection.");
         setIsLoading(false);
         return;
       }
@@ -141,13 +145,28 @@ export default function Home() {
         const parsed: StoredGameProgress = JSON.parse(savedLocal);
         setClueNumber(parsed.clueNumber);
         setAttempts(parsed.attempts || []);
+        setUserDeck(parsed.userDeck || []);
         setUnlockedClues(parsed.unlockedClues || []);
         setHasWon(parsed.hasWon);
         setHasLost(parsed.hasLost);
         setSolution(parsed.solution);
       } else {
-        setUnlockedClues([data.clue]);
+        const deck = shuffleArray(data.allClues || []);
+        setUserDeck(deck);
+        setUnlockedClues([deck[0]]);
         setClueNumber(1);
+
+        const initialProgress: StoredGameProgress = {
+          gameDate: today,
+          clueNumber: 1,
+          attempts: [],
+          userDeck: deck,
+          unlockedClues: [deck[0]],
+          hasWon: false,
+          hasLost: false,
+          solution: null,
+        };
+        localStorage.setItem(`40clues_progress_${today}`, JSON.stringify(initialProgress));
       }
     } catch {
       setMessage("Network error while loading game.");
@@ -189,6 +208,7 @@ export default function Home() {
   const saveProgress = (
     nextClueNum: number,
     newAttempts: string[],
+    newDeck: string[],
     newUnlockedClues: string[],
     won: boolean,
     lost: boolean,
@@ -199,6 +219,7 @@ export default function Home() {
       gameDate,
       clueNumber: nextClueNum,
       attempts: newAttempts,
+      userDeck: newDeck,
       unlockedClues: newUnlockedClues,
       hasWon: won,
       hasLost: lost,
@@ -230,37 +251,27 @@ export default function Home() {
     setTimeout(() => setIsShakeActive(false), 500);
   };
 
-  const handleSkipClue = async () => {
+  const handleSkipClue = () => {
     if (hasWon || hasLost || isSubmitting || clueNumber >= totalClues) return;
 
-    setIsSubmitting(true);
-    try {
-      const nextNum = clueNumber + 1;
-      const res = await fetch(`/api/game?clue=${nextNum}`);
-      const data = await res.json();
+    const nextNum = clueNumber + 1;
+    const nextClueText = userDeck[nextNum - 1];
+    if (!nextClueText) return;
 
-      if (data.clue) {
-        setIsClueFading(true);
-        setTimeout(() => {
-          const newUnlocked = [...unlockedClues, data.clue];
-          setClueNumber(nextNum);
-          setUnlockedClues(newUnlocked);
-          setIsClueFading(false);
-          setMessage("Clue skipped (-25 pts)");
-          saveProgress(nextNum, attempts, newUnlocked, false, false, null);
-        }, 150);
-      }
-    } catch {
-      setMessage("Error unlocking next clue.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    setIsClueFading(true);
+    setTimeout(() => {
+      const newUnlocked = [...unlockedClues, nextClueText];
+      setClueNumber(nextNum);
+      setUnlockedClues(newUnlocked);
+      setIsClueFading(false);
+      setMessage("Clue passed (-25 pts)");
+      saveProgress(nextNum, attempts, userDeck, newUnlocked, false, false, null);
+    }, 150);
   };
 
   const handleMovieGuess = async (selectedTitle: string) => {
     if (!selectedTitle || hasWon || hasLost || isSubmitting) return;
 
-    // Prevenire ghiciri duplicate
     if (attempts.some((a) => a.toLowerCase() === selectedTitle.toLowerCase())) {
       setMessage(`You already tried "${selectedTitle}"! Pick another film.`);
       triggerErrorShake();
@@ -288,7 +299,7 @@ export default function Home() {
         confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
         updateStreakOnWin();
         const score = calculateScore(clueNumber);
-        saveProgress(clueNumber, attempts, unlockedClues, true, false, sol);
+        saveProgress(clueNumber, attempts, userDeck, unlockedClues, true, false, sol);
         if (user) {
           syncScoreToDatabase(clueNumber, score);
         }
@@ -297,28 +308,29 @@ export default function Home() {
         const newAttempts = [selectedTitle, ...attempts];
         setAttempts(newAttempts);
 
-        if (data.gameOver) {
+        if (data.gameOver || clueNumber >= totalClues) {
           setHasLost(true);
           const finalSol: SolutionData = {
-            title: data.solution.title,
-            year: data.solution.year,
-            poster: data.solution.poster || null,
+            title: data.solution?.title || "",
+            year: data.solution?.year || 0,
+            poster: data.solution?.poster || null,
           };
           setSolution(finalSol);
           setMessage(`Game over! The movie was: ${finalSol.title} (${finalSol.year})`);
           localStorage.setItem("40clues_streak", "0");
           setStreak(0);
-          saveProgress(clueNumber, newAttempts, unlockedClues, false, true, finalSol);
+          saveProgress(clueNumber, newAttempts, userDeck, unlockedClues, false, true, finalSol);
         } else {
           setIsClueFading(true);
           setTimeout(() => {
             const nextNum = clueNumber + 1;
-            const newUnlocked = [...unlockedClues, data.nextClue];
+            const nextClueText = userDeck[nextNum - 1];
+            const newUnlocked = [...unlockedClues, nextClueText];
             setClueNumber(nextNum);
             setUnlockedClues(newUnlocked);
             setIsClueFading(false);
             setMessage("Incorrect! Next clue unlocked.");
-            saveProgress(nextNum, newAttempts, newUnlocked, false, false, null);
+            saveProgress(nextNum, newAttempts, userDeck, newUnlocked, false, false, null);
           }, 150);
         }
       }
@@ -331,11 +343,11 @@ export default function Home() {
 
   const handleShare = () => {
     const finalScore = calculateScore(clueNumber);
-    // Grid vizual tip Wordle (pătrățele în funcție de performanță)
     const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
     const greenBlock = "🟩";
     const blackBlock = "⬛";
-    const emojiGrid = greenBlock.repeat(Math.max(1, 6 - blocksCount)) + blackBlock.repeat(blocksCount - 1);
+    const emojiGrid =
+      greenBlock.repeat(Math.max(1, 6 - blocksCount)) + blackBlock.repeat(blocksCount - 1);
 
     const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues\n🏆 ${finalScore} pts\n🔥 ${streak}-day streak\n${emojiGrid}\n\nhttps://40clues.com`;
 
@@ -375,7 +387,7 @@ export default function Home() {
 
           <button
             onClick={() => setIsHowToPlayOpen(true)}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 focus:outline-none transition-all"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
             title="How to play"
             aria-label="How to play"
           >
@@ -384,7 +396,7 @@ export default function Home() {
 
           <button
             onClick={() => setIsLeaderboardOpen(true)}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 focus:outline-none transition-all"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
             title="Open Daily Leaderboard"
             aria-label="Open Daily Leaderboard"
           >
@@ -525,7 +537,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Input & Skip Button Row */}
+        {/* Input & Pass Button Row */}
         {!hasWon && !hasLost ? (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -683,7 +695,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Incorrect Guesses - Pill Badges on Mobile */}
+        {/* Incorrect Guesses */}
         {attempts.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
@@ -704,6 +716,19 @@ export default function Home() {
         )}
       </div>
 
+      {/* Footer */}
+      <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
+        <div>© Bogdan Besliu 2026. All rights reserved.</div>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/privacy"
+            className="hover:text-amber-400 transition-colors underline underline-offset-4"
+          >
+            Privacy Policy
+          </Link>
+        </div>
+      </footer>
+
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
@@ -714,22 +739,6 @@ export default function Home() {
         isOpen={isHowToPlayOpen}
         onClose={() => setIsHowToPlayOpen(false)}
       />
-
-      {/* Footer cu Copyright Bogdan Besliu 2026 și Link Privacy */}
-      <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
-        <div>
-          © Bogdan Besliu 2026. All rights reserved.
-        </div>
-        <div className="flex items-center gap-4">
-          <a
-            href="/privacy"
-            className="hover:text-amber-400 transition-colors underline underline-offset-4"
-          >
-            Privacy Policy
-          </a>
-        </div>
-      </footer>
-      
     </main>
   );
 }
