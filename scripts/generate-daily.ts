@@ -1,29 +1,30 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
-import * as dotenv from "dotenv";
-import * as fs from "fs";
 
-// Încarcă .env.local doar dacă fișierul există fizic (pe localhost)
-if (fs.existsSync(".env.local")) {
-  dotenv.config({ path: ".env.local" });
+// Funcție ajutătoare pentru instanțiere Supabase și Gemini în mediul curent
+function getClients() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseServiceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "";
+  const geminiApiKey = process.env.GEMINI_API_KEY || "";
+  const tmdbApiKey = process.env.TMDB_API_KEY || "";
+
+  if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey || !tmdbApiKey) {
+    throw new Error(
+      "Missing required API keys in environment (GEMINI_API_KEY, TMDB_API_KEY, Supabase keys)"
+    );
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+
+  return { supabase, ai, tmdbApiKey };
 }
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const geminiApiKey = process.env.GEMINI_API_KEY || "";
-const tmdbApiKey = process.env.TMDB_API_KEY || "";
-
-if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey || !tmdbApiKey) {
-  console.error("❌ Missing required API keys in .env.local (GEMINI_API_KEY, TMDB_API_KEY, Supabase keys)");
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const ai = new GoogleGenAI({ apiKey: geminiApiKey });
 
 // Funcție care extrage un film aleatoriu dar relevant din TMDB
-async function fetchRandomPopularMovie() {
-  // Selectăm o pagină random din primele 25 de pagini cu filme apreciate
+async function fetchRandomPopularMovie(tmdbApiKey: string) {
   const randomPage = Math.floor(Math.random() * 25) + 1;
   const url = `https://api.themoviedb.org/3/discover/movie?api_key=${tmdbApiKey}&language=en-US&sort_by=vote_count.desc&include_adult=false&vote_average.gte=6.5&vote_count.gte=1000&page=${randomPage}`;
 
@@ -38,9 +39,10 @@ async function fetchRandomPopularMovie() {
     throw new Error("No movies found from TMDB");
   }
 
-  // Luăm un film random din pagina descărcată
   const randomMovie = movies[Math.floor(Math.random() * movies.length)];
-  const releaseYear = randomMovie.release_date ? parseInt(randomMovie.release_date.split("-")[0], 10) : 2000;
+  const releaseYear = randomMovie.release_date
+    ? parseInt(randomMovie.release_date.split("-")[0], 10)
+    : 2000;
 
   return {
     title: randomMovie.title,
@@ -49,9 +51,12 @@ async function fetchRandomPopularMovie() {
   };
 }
 
-async function runDailyGenerator() {
+// EXPORTĂ funcția pentru a putea fi apelată de cron
+export async function runDailyGenerator() {
+  const { supabase, ai, tmdbApiKey } = getClients();
+
   console.log("🎬 Fetching movie from TMDB API...");
-  
+
   // 1. Verificăm filmele deja jucate din Supabase
   const { data: playedGames } = await supabase.from("daily_games").select("title");
   const playedTitles = new Set(playedGames?.map((g) => g.title.toLowerCase()) || []);
@@ -59,10 +64,9 @@ async function runDailyGenerator() {
   let selectedMovie;
   let attempts = 0;
 
-  // Căutăm până găsim un film care nu a mai fost jucat
   while (!selectedMovie && attempts < 10) {
     attempts++;
-    const candidate = await fetchRandomPopularMovie();
+    const candidate = await fetchRandomPopularMovie(tmdbApiKey);
     if (!playedTitles.has(candidate.title.toLowerCase())) {
       selectedMovie = candidate;
     }
@@ -74,7 +78,7 @@ async function runDailyGenerator() {
 
   console.log(`🎯 Selected Movie: "${selectedMovie.title}" (${selectedMovie.year})`);
 
-  // 2. Promptul calibrat conform regulilor de joc stabilite
+  // 2. Promptul calibrat
   const prompt = `
 You are generating clues for "40Clues", a daily cinema trivia game.
 Target Movie: "${selectedMovie.title}" (${selectedMovie.year})
@@ -98,7 +102,7 @@ STRICT RULES:
   console.log("🤖 Generating 40 clues using Gemini...");
 
   const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
+    model: "gemini-2.5-flash",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
@@ -123,7 +127,7 @@ STRICT RULES:
     console.warn(`⚠️ Warning: LLM generated ${clues.length} clues instead of 40.`);
   }
 
-  // 3. Salvăm în Supabase pentru data de azi (sau actualizăm dacă există deja)
+  // 3. Salvare în Supabase
   const today = new Date().toISOString().split("T")[0];
 
   const { error } = await supabase.from("daily_games").upsert(
@@ -132,16 +136,27 @@ STRICT RULES:
       game_date: today,
       title: selectedMovie.title,
       year: selectedMovie.year,
-      clues: clues,
+      clues: clues.slice(0, 40),
     },
     { onConflict: "game_date" }
   );
 
   if (error) {
-    console.error("❌ Supabase Upsert Error:", error.message);
-  } else {
-    console.log(`✅ SUCCESS! "${selectedMovie.title}" (${selectedMovie.year}) with 40 clues saved to Supabase for ${today}!`);
+    throw new Error(`Supabase Upsert Error: ${error.message}`);
   }
+
+  return {
+    success: true,
+    movie: selectedMovie.title,
+    year: selectedMovie.year,
+    cluesCount: clues.length,
+    gameDate: today,
+  };
 }
 
-runDailyGenerator().catch(console.error);
+// Permite rularea manuală din terminal când se rulează `npx ts-node scripts/generate-daily.ts`
+if (require.main === module) {
+  runDailyGenerator()
+    .then((res) => console.log("✅ Done:", res))
+    .catch(console.error);
+}
