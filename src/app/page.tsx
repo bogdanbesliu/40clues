@@ -135,6 +135,13 @@ export default function Home() {
         token = session?.access_token;
       }
 
+      // Generăm un username consistent pentru jucătorii nelogați
+      let anonName = localStorage.getItem("40clues_anon_name");
+      if (!anonName) {
+        anonName = `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+        localStorage.setItem("40clues_anon_name", anonName);
+      }
+
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
@@ -149,6 +156,7 @@ export default function Home() {
           gameDate: targetDate || gameDate,
           cluesUsed,
           score,
+          anonName,
         }),
       });
     } catch (err) {

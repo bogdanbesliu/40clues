@@ -3,15 +3,44 @@ import { supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const type = searchParams.get("type") || "daily";
   const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
 
   try {
-    // Top 10 jucători pentru ziua respectivă
+    if (type === "global") {
+      // Global Leaderboards: Top 20 utilizatori înregistrați după scorul total
+      const { data: globalTop, error } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_url, total_score, games_played, current_streak")
+        .gt("total_score", 0)
+        .order("total_score", { ascending: false })
+        .limit(20);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      const formatted = (globalTop || []).map((p) => ({
+        score: p.total_score || 0,
+        clues_used: p.games_played || 0,
+        streak: p.current_streak || 0,
+        profiles: {
+          display_name: p.display_name || "Detective",
+          avatar_url: p.avatar_url || null,
+        },
+      }));
+
+      return NextResponse.json({ leaderboard: formatted });
+    }
+
+    // Daily Leaderboard: Top 20 scoruri de azi (atât logați, cât și nelogați)
     const { data: dailyTop, error } = await supabase
       .from("daily_scores")
       .select(`
         score,
         clues_used,
+        anon_name,
+        created_at,
         profiles (
           display_name,
           avatar_url
@@ -20,7 +49,8 @@ export async function GET(request: Request) {
       .eq("game_date", date)
       .order("score", { ascending: false })
       .order("clues_used", { ascending: true })
-      .limit(10);
+      .order("created_at", { ascending: true })
+      .limit(20);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

@@ -40,104 +40,120 @@ export async function POST(request: Request) {
 
     const {
       data: { user },
-      error: authError,
     } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { gameDate, cluesUsed, score } = await request.json();
+    const { gameDate, cluesUsed, score, anonName } = await request.json();
 
     if (!gameDate || typeof cluesUsed !== "number" || typeof score !== "number") {
       return NextResponse.json({ error: "Missing score fields" }, { status: 400 });
     }
 
-    // 1. Ne asigurăm că utilizatorul are un rând în `profiles` înainte de a insera în `daily_scores`
-    const displayName =
-      user.user_metadata?.full_name ||
-      user.user_metadata?.name ||
-      user.email?.split("@")[0] ||
-      "Detective";
-    const avatarUrl = user.user_metadata?.avatar_url || null;
+    // CAZUL 1: Utilizator înregistrat (logat cu Google)
+    if (user) {
+      const displayName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email?.split("@")[0] ||
+        "Detective";
+      const avatarUrl = user.user_metadata?.avatar_url || null;
 
-    await supabase.from("profiles").upsert(
-      {
-        id: user.id,
-        display_name: displayName,
-        avatar_url: avatarUrl,
-      },
-      { onConflict: "id" }
-    );
+      await supabase.from("profiles").upsert(
+        {
+          id: user.id,
+          display_name: displayName,
+          avatar_url: avatarUrl,
+        },
+        { onConflict: "id" }
+      );
 
-    // 2. Salvăm scorul zilei în `daily_scores`
-    const { error: scoreError } = await supabase.from("daily_scores").upsert(
-      {
-        user_id: user.id,
-        game_date: gameDate,
-        clues_used: cluesUsed,
-        score: score,
-      },
-      { onConflict: "user_id,game_date" }
-    );
+      const { error: scoreError } = await supabase.from("daily_scores").upsert(
+        {
+          user_id: user.id,
+          game_date: gameDate,
+          clues_used: cluesUsed,
+          score: score,
+          anon_name: displayName,
+        },
+        { onConflict: "user_id,game_date" }
+      );
 
-    if (scoreError) {
-      console.error("Daily score upsert error:", scoreError);
-      return NextResponse.json({ error: scoreError.message }, { status: 400 });
-    }
-
-    // 3. Recalculăm statisticile totale și streak-urile din toate jocurile utilizatorului
-    const { data: allScores } = await supabase
-      .from("daily_scores")
-      .select("score, game_date")
-      .eq("user_id", user.id)
-      .order("game_date", { ascending: true });
-
-    const rows = allScores || [];
-    const totalScore = rows.reduce((acc, curr) => acc + (curr.score || 0), 0);
-    const gamesPlayed = rows.length;
-
-    // Calculăm currentStreak și maxStreak pe baza datelor consecutive
-    let currentStreak = 0;
-    let maxStreak = 0;
-    let prevDate: Date | null = null;
-
-    for (const r of rows) {
-      const d = new Date(`${r.game_date}T00:00:00Z`);
-      if (!prevDate) {
-        currentStreak = 1;
-      } else {
-        const diffDays = Math.round((d.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
-        if (diffDays === 1) {
-          currentStreak += 1;
-        } else if (diffDays > 1) {
-          currentStreak = 1;
-        }
+      if (scoreError) {
+        return NextResponse.json({ error: scoreError.message }, { status: 400 });
       }
-      if (currentStreak > maxStreak) maxStreak = currentStreak;
-      prevDate = d;
+
+      // Recalculăm statisticile totale pentru Global Leaderboard și Profil
+      const { data: allScores } = await supabase
+        .from("daily_scores")
+        .select("score, game_date")
+        .eq("user_id", user.id)
+        .order("game_date", { ascending: true });
+
+      const rows = allScores || [];
+      const totalScore = rows.reduce((acc, curr) => acc + (curr.score || 0), 0);
+      const gamesPlayed = rows.length;
+
+      let currentStreak = 0;
+      let maxStreak = 0;
+      let prevDate: Date | null = null;
+
+      for (const r of rows) {
+        const d = new Date(`${r.game_date}T00:00:00Z`);
+        if (!prevDate) {
+          currentStreak = 1;
+        } else {
+          const diffDays = Math.round((d.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays === 1) {
+            currentStreak += 1;
+          } else if (diffDays > 1) {
+            currentStreak = 1;
+          }
+        }
+        if (currentStreak > maxStreak) maxStreak = currentStreak;
+        prevDate = d;
+      }
+
+      await supabase
+        .from("profiles")
+        .update({
+          total_score: totalScore,
+          games_played: gamesPlayed,
+          current_streak: currentStreak,
+          max_streak: maxStreak,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      return NextResponse.json({
+        success: true,
+        totalScore,
+        gamesPlayed,
+        currentStreak,
+        maxStreak,
+      });
     }
 
-    await supabase
-      .from("profiles")
-      .update({
-        total_score: totalScore,
-        games_played: gamesPlayed,
-        current_streak: currentStreak,
-        max_streak: maxStreak,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", user.id);
+    // CAZUL 2: Utilizator neautentificat (Guest) -> salvăm în Daily Leaderboard cu username generat
+    const generatedUsername =
+      anonName || `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const { error: guestError } = await supabase.from("daily_scores").insert({
+      user_id: null,
+      game_date: gameDate,
+      clues_used: cluesUsed,
+      score: score,
+      anon_name: generatedUsername,
+    });
+
+    if (guestError) {
+      return NextResponse.json({ error: guestError.message }, { status: 400 });
+    }
 
     return NextResponse.json({
       success: true,
-      totalScore,
-      gamesPlayed,
-      currentStreak,
-      maxStreak,
+      guest: true,
+      anonName: generatedUsername,
     });
   } catch (err: any) {
-    console.error("Score route exception:", err);
     return NextResponse.json(
       { error: err?.message || "Internal server error" },
       { status: 500 }
