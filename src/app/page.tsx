@@ -74,45 +74,78 @@ export default function HomePage() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
-  // Încărcare joc zilnic
+  // Încărcare joc zilnic cu fallback și validare structură
   useEffect(() => {
     async function loadDailyGame() {
       setIsLoading(true);
+      setErrorMsg(null);
       try {
-        const res = await fetch("/api/game");
+        // Încercăm endpoint-urile posibile ale proiectului
+        let res = await fetch("/api/daily-game");
+        if (!res.ok) {
+          res = await fetch("/api/game");
+        }
         if (!res.ok) throw new Error("Could not load daily movie puzzle");
+
         const data = await res.json();
-        setGame(data);
+        const movieGame = data.game || data; // În caz că răspunsul este { game: { ... } }
+        setGame(movieGame);
 
-        // Generare deck amestecat stabil (sau preluat din localStorage)
-        const storageKey = `40clues_deck_${data.game_date}`;
-        const savedDeck = localStorage.getItem(storageKey);
+        // Normalizăm indiciile (string sau obiect)
+        const rawCluesList: any[] = movieGame.clues || movieGame.clues_list || [];
+        const normalizedClues: string[] = rawCluesList.map((c: any) =>
+          typeof c === "string" ? c : c.text || c.clue || String(c)
+        );
 
-        if (savedDeck) {
-          setShuffledDeck(JSON.parse(savedDeck));
-        } else {
-          const rawClues: string[] = data.clues || [];
-          const indexed = rawClues.map((text, idx) => ({ index: idx + 1, text }));
-          // Fisher-Yates shuffle
+        const storageKey = `40clues_deck_${movieGame.game_date}`;
+        let loadedDeck: MovieClue[] = [];
+
+        try {
+          const savedDeckStr = localStorage.getItem(storageKey);
+          if (savedDeckStr) {
+            const parsed = JSON.parse(savedDeckStr);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              loadedDeck = parsed;
+            }
+          }
+        } catch {
+          // ignora JSON parse error
+        }
+
+        // Dacă nu avem deck salvat valid în localStorage, îl generăm
+        if (loadedDeck.length === 0 && normalizedClues.length > 0) {
+          const indexed = normalizedClues.map((text, idx) => ({
+            index: idx + 1,
+            text,
+          }));
+
+          // Shuffle Fisher-Yates
           for (let i = indexed.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
           }
-          setShuffledDeck(indexed);
-          localStorage.setItem(storageKey, JSON.stringify(indexed));
+          loadedDeck = indexed;
+          localStorage.setItem(storageKey, JSON.stringify(loadedDeck));
         }
 
-        // Restaurare stare progres salvat
-        const progressKey = `40clues_progress_${data.game_date}`;
+        setShuffledDeck(loadedDeck);
+
+        // Restaurare progres
+        const progressKey = `40clues_progress_${movieGame.game_date}`;
         const savedProgress = localStorage.getItem(progressKey);
         if (savedProgress) {
-          const parsed = JSON.parse(savedProgress);
-          setRevealedCount(parsed.revealedCount || 1);
-          setGuesses(parsed.guesses || []);
-          setIsWon(parsed.isWon || false);
-          setIsGameOver(parsed.isGameOver || false);
+          try {
+            const parsed = JSON.parse(savedProgress);
+            setRevealedCount(parsed.revealedCount || 1);
+            setGuesses(parsed.guesses || []);
+            setIsWon(parsed.isWon || false);
+            setIsGameOver(parsed.isGameOver || false);
+          } catch {
+            // ignora
+          }
         }
       } catch (err: any) {
+        console.error("Failed to load daily game:", err);
         setErrorMsg(err.message || "Failed to load game");
       } finally {
         setIsLoading(false);
@@ -353,16 +386,21 @@ export default function HomePage() {
 
         {/* Deck-ul de Indicii Vizibile */}
         <section aria-label="Deck of clues" className="flex-1 flex flex-col gap-2.5 overflow-y-auto max-h-[48vh] pr-1">
+          {shuffledDeck.length === 0 && (
+            <div className="p-6 rounded-xl border border-slate-800 bg-slate-900/50 text-center text-xs text-slate-400">
+              {isLoading ? "Decrypting daily movie clues..." : "No clues available for today."}
+            </div>
+          )}
+
           {shuffledDeck.slice(0, revealedCount).map((clue, idx) => {
             const isLatest = idx === revealedCount - 1;
             return (
               <article
                 key={clue.index}
-                className={`p-3.5 rounded-xl border text-xs leading-relaxed transition-all duration-300 ${
-                  isLatest
-                    ? "bg-slate-900 border-amber-500/50 text-slate-100 shadow-md ring-1 ring-amber-500/20"
-                    : "bg-slate-900/40 border-slate-800/60 text-slate-300"
-                }`}
+                className={`p-3.5 rounded-xl border text-xs leading-relaxed transition-all duration-300 ${isLatest
+                  ? "bg-slate-900 border-amber-500/50 text-slate-100 shadow-md ring-1 ring-amber-500/20"
+                  : "bg-slate-900/40 border-slate-800/60 text-slate-300"
+                  }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span className="text-[10px] font-mono font-bold text-amber-400/80 uppercase">
