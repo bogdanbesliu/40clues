@@ -31,9 +31,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
     }
 
-    // 1. Extragem toate scorurile utilizatorului
+    // 1. Extragem toate scorurile utilizatorului din daily_scores
     const { data: scores, error: scoresError } = await supabase
-      .from("user_scores")
+      .from("daily_scores")
       .select("game_date, score, clues_used, created_at")
       .eq("user_id", user.id)
       .order("game_date", { ascending: false });
@@ -63,11 +63,11 @@ export async function GET(request: Request) {
     const avgClues =
       totalPlayed > 0
         ? parseFloat(
-            (
-              (scores || []).reduce((acc, curr) => acc + (curr.clues_used || 0), 0) /
-              totalPlayed
-            ).toFixed(1)
-          )
+          (
+            (scores || []).reduce((acc, curr) => acc + (curr.clues_used || 0), 0) /
+            totalPlayed
+          ).toFixed(1)
+        )
         : 0;
 
     const distribution = {
@@ -78,9 +78,9 @@ export async function GET(request: Request) {
       skinOfTeeth: 0,
     };
 
-    let perfectScoresCount = 0; // scoruri de 1000 pct
-    let clutchWinsCount = 0; // ghicit la ultimul indiciu (40)
-    let underFiveCluesCount = 0; // ghicite în sub 5 indicii
+    let perfectScoresCount = 0;
+    let clutchWinsCount = 0;
+    let underFiveCluesCount = 0;
 
     (scores || []).forEach((s) => {
       const c = s.clues_used;
@@ -143,7 +143,7 @@ export async function GET(request: Request) {
       movieYear: gamesMap[s.game_date]?.year || "",
     }));
 
-    // 6. Suita completă de 15 Badges cu Progres (current / target)
+    // 6. Badges
     const badges = [
       {
         id: "first_win",
@@ -173,24 +173,6 @@ export async function GET(request: Request) {
         unlocked: maxStreak >= 7,
       },
       {
-        id: "streak_14",
-        title: "Fortnight Fanatic",
-        desc: "Reach a 14-day daily streak",
-        icon: "⚡",
-        current: Math.min(14, maxStreak),
-        target: 14,
-        unlocked: maxStreak >= 14,
-      },
-      {
-        id: "streak_30",
-        title: "Monthly Master",
-        desc: "Conquer a 30-day streak without missing",
-        icon: "👑",
-        current: Math.min(30, maxStreak),
-        target: 30,
-        unlocked: maxStreak >= 30,
-      },
-      {
         id: "psychic_strike",
         title: "Cinephile Psychic",
         desc: "Deduce a film in 3 clues or fewer",
@@ -198,15 +180,6 @@ export async function GET(request: Request) {
         current: Math.min(1, distribution.psychic),
         target: 1,
         unlocked: distribution.psychic >= 1,
-      },
-      {
-        id: "sharp_intuition",
-        title: "Sharp Intuition",
-        desc: "Solve 5 different movies in under 5 clues",
-        icon: "👁️",
-        current: Math.min(5, underFiveCluesCount),
-        target: 5,
-        unlocked: underFiveCluesCount >= 5,
       },
       {
         id: "perfectionist",
@@ -218,33 +191,6 @@ export async function GET(request: Request) {
         unlocked: perfectScoresCount >= 1,
       },
       {
-        id: "skin_of_teeth",
-        title: "Clutch Detective",
-        desc: "Solve a puzzle on the 40th and final clue",
-        icon: "🪢",
-        current: Math.min(1, clutchWinsCount),
-        target: 1,
-        unlocked: clutchWinsCount >= 1,
-      },
-      {
-        id: "silver_screen",
-        title: "Silver Screen Veteran",
-        desc: "Successfully solve 10 movie puzzles",
-        icon: "🎞️",
-        current: Math.min(10, totalPlayed),
-        target: 10,
-        unlocked: totalPlayed >= 10,
-      },
-      {
-        id: "director_cut",
-        title: "Director's Cut",
-        desc: "Successfully solve 25 movie puzzles",
-        icon: "📽️",
-        current: Math.min(25, totalPlayed),
-        target: 25,
-        unlocked: totalPlayed >= 25,
-      },
-      {
         id: "century_club",
         title: "Century Club",
         desc: "Play and solve 100 cinema puzzles",
@@ -252,33 +198,6 @@ export async function GET(request: Request) {
         current: Math.min(100, totalPlayed),
         target: 100,
         unlocked: totalPlayed >= 100,
-      },
-      {
-        id: "point_collector",
-        title: "High Roller",
-        desc: "Accumulate 5,000 total career points",
-        icon: "🪙",
-        current: Math.min(5000, totalPoints),
-        target: 5000,
-        unlocked: totalPoints >= 5000,
-      },
-      {
-        id: "score_titan",
-        title: "Score Titan",
-        desc: "Accumulate 20,000 total career points",
-        icon: "💎",
-        current: Math.min(20000, totalPoints),
-        target: 20000,
-        unlocked: totalPoints >= 20000,
-      },
-      {
-        id: "hall_of_fame",
-        title: "Cinephile Legend",
-        desc: "Reach a 50-day daily streak",
-        icon: "🌟",
-        current: Math.min(50, maxStreak),
-        target: 50,
-        unlocked: maxStreak >= 50,
       },
     ];
 
