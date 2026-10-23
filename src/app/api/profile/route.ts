@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -19,22 +19,33 @@ export async function GET() {
                 cookieStore.set(name, value, options)
               );
             } catch {
-              // Read-only environment handling
+              // Ignore in read-only environment
             }
           },
         },
       }
     );
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // Acceptăm utilizatorul fie prin Bearer Token, fie prin cookies
+    const authHeader = request.headers.get("authorization");
+    let user = null;
+
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "").trim();
+      const { data } = await supabase.auth.getUser(token);
+      user = data?.user;
+    }
+
+    if (!user) {
+      const { data } = await supabase.auth.getUser();
+      user = data?.user;
+    }
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Extragem toate scorurile utilizatorului
+    // Extragem toate scorurile utilizatorului curent
     const { data: scores, error: scoresError } = await supabase
       .from("user_scores")
       .select("game_date, score, clues_used, created_at")
@@ -45,9 +56,9 @@ export async function GET() {
       return NextResponse.json({ error: scoresError.message }, { status: 500 });
     }
 
-    // Extragem detaliile filmelor jucate pentru a le afișa în istoric
+    // Extragem titlurile filmelor jucate
     const gameDates = (scores || []).map((s) => s.game_date);
-    let gamesMap: Record<string, { title: string; year: number }> = {};
+    const gamesMap: Record<string, { title: string; year: number }> = {};
 
     if (gameDates.length > 0) {
       const { data: games } = await supabase
@@ -60,7 +71,7 @@ export async function GET() {
       });
     }
 
-    // 1. Calcul Statistici Carieră
+    // Calcul statistici carieră
     const totalPlayed = scores?.length || 0;
     const totalPoints = (scores || []).reduce((acc, curr) => acc + (curr.score || 0), 0);
     const avgClues =
@@ -73,13 +84,13 @@ export async function GET() {
           )
         : 0;
 
-    // 2. Distribuția ghicirilor conform badge-urilor din Game Design
+    // Distribuția pe categorii conform Game Design
     const distribution = {
-      psychic: 0, // 1-3 indicii
-      buff: 0, // 4-10 indicii
-      casual: 0, // 11-25 indicii
-      detective: 0, // 26-39 indicii
-      skinOfTeeth: 0, // 40 indicii
+      psychic: 0,
+      buff: 0,
+      casual: 0,
+      detective: 0,
+      skinOfTeeth: 0,
     };
 
     (scores || []).forEach((s) => {
@@ -91,7 +102,7 @@ export async function GET() {
       else if (c === 40) distribution.skinOfTeeth++;
     });
 
-    // 3. Calcul Streak curent și Streak maxim
+    // Calcul Streaks
     const sortedDates = (scores || [])
       .map((s) => s.game_date)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -104,22 +115,17 @@ export async function GET() {
       const today = new Date().toISOString().split("T")[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
-      // Verificăm dacă streak-ul este activ astăzi sau ieri
       if (sortedDates[0] === today || sortedDates[0] === yesterday) {
         currentStreak = 1;
         for (let i = 0; i < sortedDates.length - 1; i++) {
           const d1 = new Date(sortedDates[i]);
           const d2 = new Date(sortedDates[i + 1]);
           const diffDays = Math.round((d1.getTime() - d2.getTime()) / (1000 * 3600 * 24));
-          if (diffDays === 1) {
-            currentStreak++;
-          } else {
-            break;
-          }
+          if (diffDays === 1) currentStreak++;
+          else break;
         }
       }
 
-      // Max Streak istoric
       tempStreak = 1;
       maxStreak = 1;
       for (let i = 0; i < sortedDates.length - 1; i++) {
@@ -135,7 +141,7 @@ export async function GET() {
       }
     }
 
-    // 4. Istoric formatat
+    // Istoric meciuri
     const history = (scores || []).map((s) => ({
       gameDate: s.game_date,
       score: s.score,
@@ -144,7 +150,7 @@ export async function GET() {
       movieYear: gamesMap[s.game_date]?.year || "",
     }));
 
-    // 5. Calcul Insigne / Milestones deblocate
+    // Badges deblocate
     const badges = [
       {
         id: "first_win",

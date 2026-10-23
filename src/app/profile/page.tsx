@@ -7,7 +7,6 @@ import {
   Flame,
   Trophy,
   Target,
-  Sparkles,
   Award,
   Calendar,
   LogIn,
@@ -63,26 +62,55 @@ export default function ProfilePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
-    setIsLoading(true);
+  const loadProfileData = async (accessToken?: string) => {
     try {
-      const res = await fetch("/api/profile");
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+      }
+
+      const res = await fetch("/api/profile", { headers });
       if (res.status === 401) {
         setIsGuest(true);
       } else if (res.ok) {
         const json = await res.json();
         setData(json);
+        setIsGuest(false);
       }
     } catch (err) {
       console.error("Profile load error:", err);
+      setIsGuest(true);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // 1. Verificăm mai întâi sesiunea din browser
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        loadProfileData(session.access_token);
+      } else {
+        setIsGuest(true);
+        setIsLoading(false);
+      }
+    });
+
+    // 2. Ascultăm modificările de stare (login / logout)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        loadProfileData(session.access_token);
+      } else {
+        setIsGuest(true);
+        setData(null);
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
@@ -110,7 +138,6 @@ export default function ProfilePage() {
     );
   }
 
-  // Ecran pentru utilizatori Guest (nelogați)
   if (isGuest || !data) {
     return (
       <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center px-4 py-8">
@@ -127,6 +154,7 @@ export default function ProfilePage() {
           </div>
 
           <button
+            type="button"
             onClick={handleGoogleLogin}
             className="w-full min-h-[48px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold px-6 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
           >
@@ -158,7 +186,6 @@ export default function ProfilePage() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-6 sm:py-8 font-sans selection:bg-amber-500/30">
       <div className="max-w-xl w-full flex flex-col gap-6">
-        {/* Navigation & Header */}
         <header className="flex items-center justify-between border-b border-slate-800/80 pb-4">
           <Link
             href="/"
@@ -169,6 +196,7 @@ export default function ProfilePage() {
           </Link>
 
           <button
+            type="button"
             onClick={handleSignOut}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-rose-400 transition-colors"
           >
