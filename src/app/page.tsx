@@ -346,20 +346,57 @@ export default function Home() {
     }
   };
 
-  const handleShare = () => {
-    const finalScore = calculateScore(clueNumber);
-    const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
-    const greenBlock = "🟩";
-    const blackBlock = "⬛";
-    const emojiGrid =
-      greenBlock.repeat(Math.max(1, 6 - blocksCount)) + blackBlock.repeat(blocksCount - 1);
+  // Generator de grilă Wordle-style fără spoilere
+  const generateShareText = () => {
+    const totalClues = 40;
+    const cluesUsedCount = Math.min(cluesUsed, totalClues);
+    const won = gameState === "won";
 
-    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues\n🏆 ${finalScore} pts\n🔥 ${streak}-day streak\n${emojiGrid}\n\nhttps://40clues.com`;
+    // Calculăm numărul zilei sau data puzzle-ului
+    const puzzleNumber = gameDate ? gameDate.replace(/-/g, ".") : "Daily";
 
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareText);
-      setHasCopied(true);
-      setTimeout(() => setHasCopied(false), 2500);
+    // Construim grila vizuală de emoji (calupuri de câte 5 pătrate per rând)
+    let grid = "";
+    if (won) {
+      const yellowCount = Math.max(0, cluesUsedCount - 1);
+      const yellowSquares = "🟨".repeat(yellowCount);
+      const fullSequence = yellowSquares + "🟩";
+
+      // Împărțim în rânduri de câte 5 pătrate
+      for (let i = 0; i < fullSequence.length; i += 5) {
+        grid += fullSequence.slice(i, i + 5) + "\n";
+      }
+    } else {
+      grid = "⬛⬛⬛⬛⬛\n";
+    }
+
+    const streakDisplay = streak > 0 ? ` • 🔥 ${streak}-day streak` : "";
+
+    return `40Clues #${puzzleNumber} 🎬\n💡 ${cluesUsedCount}/${totalClues} clues used\n🏆 ${score} pts${streakDisplay}\n\n${grid.trim()}\nhttps://40clues.com`;
+  };
+
+  const handleShare = async () => {
+    const text = generateShareText();
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "40Clues: Daily Cinema Deduction",
+          text: text,
+        });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      }
+    } catch {
+      // Fallback direct pe clipboard dacă userul anulează share menu-ul nativ
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch (e) {
+        console.error("Clipboard copy failed", e);
+      }
     }
   };
 
@@ -660,22 +697,23 @@ export default function Home() {
               </button>
             )}
 
-            <button
-              onClick={handleShare}
-              className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none"
-            >
-              {hasCopied ? (
-                <>
-                  <Check className="w-5 h-5 text-white" aria-hidden="true" />
-                  <span>Copied to Clipboard!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-5 h-5" aria-hidden="true" />
-                  <span>Share Result</span>
-                </>
-              )}
-            </button>
+<button
+  type="button"
+  onClick={handleShare}
+  className="w-full min-h-[48px] bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-sm px-6 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg shadow-emerald-950/40"
+>
+  {copied ? (
+    <>
+      <Check className="w-5 h-5" />
+      <span>Copied to Clipboard!</span>
+    </>
+  ) : (
+    <>
+      <Share2 className="w-5 h-5" />
+      <span>Share Your Score</span>
+    </>
+  )}
+</button>
           </section>
         )}
 
