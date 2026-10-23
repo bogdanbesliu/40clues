@@ -79,9 +79,12 @@ export default function Home() {
   const progressPercent = Math.min(100, Math.round((clueNumber / totalClues) * 100));
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      if (user) checkAndSyncPendingLocalScore(user.id);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const activeUser = session?.user ?? null;
+      setUser(activeUser);
+      if (activeUser) {
+        checkAndSyncPendingLocalScore(session?.access_token);
+      }
     });
 
     const {
@@ -89,7 +92,9 @@ export default function Home() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const activeUser = session?.user ?? null;
       setUser(activeUser);
-      if (activeUser) checkAndSyncPendingLocalScore(activeUser.id);
+      if (activeUser) {
+        checkAndSyncPendingLocalScore(session?.access_token);
+      }
     });
 
     initGame();
@@ -97,7 +102,6 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Animație count-up pentru scor la câștig
   useEffect(() => {
     if (hasWon) {
       const target = calculateScore(clueNumber);
@@ -116,11 +120,31 @@ export default function Home() {
     }
   }, [hasWon, clueNumber]);
 
-  const syncScoreToDatabase = async (cluesUsed: number, score: number, targetDate?: string) => {
+  const syncScoreToDatabase = async (
+    cluesUsed: number,
+    score: number,
+    targetDate?: string,
+    explicitToken?: string
+  ) => {
     try {
+      let token = explicitToken;
+      if (!token) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        token = session?.access_token;
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
       await fetch("/api/score", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           gameDate: targetDate || gameDate,
           cluesUsed,
@@ -132,19 +156,25 @@ export default function Home() {
     }
   };
 
-  const checkAndSyncPendingLocalScore = async (_userId: string) => {
-    const today = new Date().toISOString().split("T")[0];
-    const savedLocal = localStorage.getItem(`40clues_progress_${today}`);
-    if (savedLocal) {
-      try {
-        const parsed: StoredGameProgress = JSON.parse(savedLocal);
-        if (parsed.hasWon && parsed.solution) {
-          const score = calculateScore(parsed.clueNumber);
-          await syncScoreToDatabase(parsed.clueNumber, score, today);
+  // Caută toate progresele câștigate în localStorage și le sincronizează în Supabase
+  const checkAndSyncPendingLocalScore = async (accessToken?: string) => {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("40clues_progress_")) {
+          const raw = localStorage.getItem(key);
+          if (!raw) continue;
+          const parsed: StoredGameProgress = JSON.parse(raw);
+          const dateFromKey = key.replace("40clues_progress_", "");
+          const targetDate = parsed.gameDate || dateFromKey;
+          if (parsed.hasWon && targetDate) {
+            const score = calculateScore(parsed.clueNumber || 1);
+            await syncScoreToDatabase(parsed.clueNumber || 1, score, targetDate, accessToken);
+          }
         }
-      } catch (err) {
-        console.error("Failed to parse saved progress:", err);
       }
+    } catch (err) {
+      console.error("Failed to parse saved progress:", err);
     }
   };
 
@@ -178,7 +208,6 @@ export default function Home() {
         setHasLost(parsed.hasLost || false);
         setSolution(parsed.solution || null);
       } else {
-        // Construim și amestecăm deck-ul de 40 de indicii pentru utilizator
         const rawClues: string[] = Array.isArray(data.allClues)
           ? data.allClues
           : Array.isArray(data.clues)
@@ -206,7 +235,7 @@ export default function Home() {
         };
         localStorage.setItem(`40clues_progress_${today}`, JSON.stringify(initialProgress));
       }
-    } catch (err) {
+    } catch {
       setMessage("Network error while loading game.");
     } finally {
       setIsLoading(false);
@@ -272,7 +301,6 @@ export default function Home() {
   const handleMovieGuess = async (selectedTitle: string) => {
     if (!selectedTitle || hasWon || hasLost || isSubmitting) return;
 
-    // Protecție împotriva ghicirii aceluiași film de două ori
     if (attempts.some((a) => a.toLowerCase() === selectedTitle.toLowerCase())) {
       setMessage("You already guessed that movie! Try another one.");
       triggerErrorShake();
@@ -301,9 +329,7 @@ export default function Home() {
         updateStreakOnWin();
         const score = calculateScore(clueNumber);
         saveProgress(clueNumber, attempts, userDeck, unlockedClues, true, false, sol);
-        if (user) {
-          syncScoreToDatabase(clueNumber, score);
-        }
+        await syncScoreToDatabase(clueNumber, score, gameDate);
       } else {
         triggerErrorShake();
         const newAttempts = [selectedTitle, ...attempts];
@@ -336,7 +362,7 @@ export default function Home() {
           }, 150);
         }
       }
-    } catch (err) {
+    } catch {
       setMessage("Error checking answer. Try again.");
     } finally {
       setIsSubmitting(false);
@@ -509,7 +535,6 @@ export default function Home() {
 
       {/* Main Container */}
       <div className="max-w-xl w-full flex flex-col gap-5 flex-1">
-        {/* Active Clue Card / Skeleton Screen */}
         {isLoading ? (
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 min-h-[160px] animate-pulse flex flex-col justify-between">
             <div className="flex justify-between items-center">
@@ -571,7 +596,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* Live Status Toast */}
         {message && (
           <div
             role="status"
@@ -587,7 +611,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Input & Pass Button Row */}
         {!hasWon && !hasLost ? (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -625,7 +648,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Poster & Movie Title Reveal */}
             {solution && (
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl w-full">
                 {solution.poster ? (
@@ -651,7 +673,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Stats Grid */}
             {hasWon && (
               <div className="grid grid-cols-3 gap-2.5 w-full">
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
@@ -710,7 +731,6 @@ export default function Home() {
           </section>
         )}
 
-        {/* Collapsible Unlocked Clues History */}
         {unlockedClues.length > 1 && (
           <div className="flex flex-col border border-slate-800/90 bg-slate-900/40 rounded-xl overflow-hidden">
             <button
@@ -745,7 +765,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* Incorrect Guesses */}
         {attempts.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
