@@ -408,14 +408,24 @@ export default function Home() {
 
           {user ? (
             <div className="flex items-center gap-1.5">
-              {user.user_metadata?.avatar_url && (
-                <img
-                  src={user.user_metadata.avatar_url}
-                  alt=""
-                  aria-hidden="true"
-                  className="w-8 h-8 rounded-full border border-slate-600 object-cover"
-                />
-              )}
+              <Link
+                href="/profile"
+                className="flex items-center gap-1.5 p-1 rounded-full hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700"
+                title="View Profile & Stats"
+              >
+                {user.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-8 h-8 rounded-full border border-amber-400/80 object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
+                    {(user.email || "U").charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </Link>
               <button
                 onClick={handleSignOut}
                 className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-slate-100 active:scale-95 rounded-full transition-all"
