@@ -1,51 +1,39 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 
 export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "").trim();
+
+    if (!token) {
+      return NextResponse.json({ error: "Missing authorization token" }, { status: 401 });
+    }
+
+    // Folosim clientul standard cu cheia anonimă și injectăm direct token-ul utilizatorului
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            try {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {
-              // Ignore in read-only environment
-            }
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
           },
         },
       }
     );
 
-    // Acceptăm utilizatorul fie prin Bearer Token, fie prin cookies
-    const authHeader = request.headers.get("authorization");
-    let user = null;
+    // 1. Verificăm autenticitatea utilizatorului prin token
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
 
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.replace("Bearer ", "").trim();
-      const { data } = await supabase.auth.getUser(token);
-      user = data?.user;
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
     }
 
-    if (!user) {
-      const { data } = await supabase.auth.getUser();
-      user = data?.user;
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Extragem toate scorurile utilizatorului curent
+    // 2. Extragem scorurile utilizatorului curent
     const { data: scores, error: scoresError } = await supabase
       .from("user_scores")
       .select("game_date, score, clues_used, created_at")
@@ -53,10 +41,11 @@ export async function GET(request: Request) {
       .order("game_date", { ascending: false });
 
     if (scoresError) {
+      console.error("Supabase scores fetch error:", scoresError);
       return NextResponse.json({ error: scoresError.message }, { status: 500 });
     }
 
-    // Extragem titlurile filmelor jucate
+    // 3. Extragem detaliile filmelor jucate pentru istoricul vizual
     const gameDates = (scores || []).map((s) => s.game_date);
     const gamesMap: Record<string, { title: string; year: number }> = {};
 
@@ -71,7 +60,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // Calcul statistici carieră
+    // 4. Calcul Statistici Carieră
     const totalPlayed = scores?.length || 0;
     const totalPoints = (scores || []).reduce((acc, curr) => acc + (curr.score || 0), 0);
     const avgClues =
@@ -84,13 +73,13 @@ export async function GET(request: Request) {
           )
         : 0;
 
-    // Distribuția pe categorii conform Game Design
+    // 5. Distribuția ghicirilor conform Game Design
     const distribution = {
-      psychic: 0,
-      buff: 0,
-      casual: 0,
-      detective: 0,
-      skinOfTeeth: 0,
+      psychic: 0, // 1-3 indicii
+      buff: 0, // 4-10 indicii
+      casual: 0, // 11-25 indicii
+      detective: 0, // 26-39 indicii
+      skinOfTeeth: 0, // 40 indicii
     };
 
     (scores || []).forEach((s) => {
@@ -102,7 +91,7 @@ export async function GET(request: Request) {
       else if (c === 40) distribution.skinOfTeeth++;
     });
 
-    // Calcul Streaks
+    // 6. Calcul Streak curent și Streak maxim
     const sortedDates = (scores || [])
       .map((s) => s.game_date)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -141,16 +130,16 @@ export async function GET(request: Request) {
       }
     }
 
-    // Istoric meciuri
+    // 7. Istoric
     const history = (scores || []).map((s) => ({
       gameDate: s.game_date,
       score: s.score,
       cluesUsed: s.clues_used,
-      movieTitle: gamesMap[s.game_date]?.title || "Unknown Film",
+      movieTitle: gamesMap[s.game_date]?.title || "Cinema Mystery",
       movieYear: gamesMap[s.game_date]?.year || "",
     }));
 
-    // Badges deblocate
+    // 8. Badges deblocate
     const badges = [
       {
         id: "first_win",
@@ -208,8 +197,9 @@ export async function GET(request: Request) {
       history,
     });
   } catch (err: any) {
+    console.error("API Profile crash:", err);
     return NextResponse.json(
-      { error: "Failed to fetch profile", details: err?.message },
+      { error: "Internal server error", details: err?.message || String(err) },
       { status: 500 }
     );
   }
