@@ -8,7 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://40clues.com"),
-  title: "40Clues: Daily Cinema Deduction Game",
+  title: "40clues.com (Guess the movie in 40 clues!)",
   description:
     "40 randomized clues. One secret movie. Test your film knowledge daily from absurd background trivia to iconic quotes. Can you deduce today's film?",
   keywords: [
@@ -20,9 +20,9 @@ export const metadata: Metadata = {
     "cinema quiz",
     "40clues",
   ],
-  authors: [{ name: "Bogdan Besliu" }],
+  authors: [{ name: "40Clues" }],
   openGraph: {
-    title: "40Clues: Daily Cinema Deduction Game",
+    title: "40clues.com (Guess the movie in 40 clues!)",
     description:
       "40 randomized clues. From absurd details to iconic quotes. Guess the movie in as few clues as possible!",
     url: "https://40clues.com",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "40Clues: Daily Cinema Deduction Game",
+    title: "40clues.com (Guess the movie in 40 clues!)",
     description:
       "40 clues. One movie. Can you deduce today's secret film before running out of clues?",
   },
@@ -42,7 +42,6 @@ export const metadata: Metadata = {
   },
 };
 
-// Datele structurate pentru Google & AI Search (JSON-LD)
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -60,8 +59,8 @@ const jsonLd = {
     priceCurrency: "USD",
   },
   author: {
-    "@type": "Person",
-    name: "Bogdan Besliu",
+    "@type": "Organization",
+    name: "40Clues",
   },
 };
 
@@ -73,15 +72,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between`}>
-        {/* Date structurate citite de Googlebot și boții de AI */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-
         {children}
-
-        {/* Monitorizare activă Vercel */}
         <Analytics />
         <SpeedInsights />
       </body>
