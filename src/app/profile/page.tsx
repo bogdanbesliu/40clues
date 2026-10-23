@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -57,25 +57,32 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Client stabil creat o singură dată
+  const supabase = useMemo(() => {
+    return createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }, []);
 
-  const loadProfileData = async (accessToken?: string) => {
+  const loadProfile = async (token?: string) => {
     try {
       const headers: Record<string, string> = {};
-      if (accessToken) {
-        headers["Authorization"] = `Bearer ${accessToken}`;
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
       }
 
-      const res = await fetch("/api/profile", { headers });
-      if (res.status === 401) {
-        setIsGuest(true);
-      } else if (res.ok) {
+      const res = await fetch("/api/profile", {
+        headers,
+        cache: "no-store",
+      });
+
+      if (res.ok) {
         const json = await res.json();
         setData(json);
         setIsGuest(false);
+      } else {
+        setIsGuest(true);
       }
     } catch (err) {
       console.error("Profile load error:", err);
@@ -86,31 +93,48 @@ export default function ProfilePage() {
   };
 
   useEffect(() => {
-    // 1. Verificăm mai întâi sesiunea din browser
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadProfileData(session.access_token);
-      } else {
-        setIsGuest(true);
-        setIsLoading(false);
-      }
-    });
+    let mounted = true;
 
-    // 2. Ascultăm modificările de stare (login / logout)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        loadProfileData(session.access_token);
-      } else {
-        setIsGuest(true);
-        setData(null);
-        setIsLoading(false);
-      }
-    });
+    async function checkAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
 
-    return () => subscription.unsubscribe();
-  }, []);
+        if (session?.access_token) {
+          await loadProfile(session.access_token);
+        } else {
+          setIsGuest(true);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          setIsGuest(true);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+        if (session?.access_token) {
+          setIsLoading(true);
+          await loadProfile(session.access_token);
+        } else if (event === "SIGNED_OUT") {
+          setIsGuest(true);
+          setData(null);
+          setIsLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
