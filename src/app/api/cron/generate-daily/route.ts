@@ -3,7 +3,6 @@ import { runDailyGenerator } from "@/../scripts/generate-daily";
 
 // Permite funcției să ruleze până la 60 secunde pe Vercel fără 504 Timeout
 export const maxDuration = 60;
-export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
