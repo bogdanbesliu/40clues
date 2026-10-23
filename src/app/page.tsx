@@ -442,7 +442,7 @@ export default function Home() {
             </div>
           ) : (
             <button
-              onClick={handleGoogleSignIn}
+              onClick={handleGoogleLogin}
               className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95"
               title="Sign in with Google"
             >
