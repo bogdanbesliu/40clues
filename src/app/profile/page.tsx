@@ -12,8 +12,20 @@ import {
   LogIn,
   LogOut,
   Film,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
+
+interface BadgeItem {
+  id: string;
+  title: string;
+  desc: string;
+  icon: string;
+  current: number;
+  target: number;
+  unlocked: boolean;
+}
 
 interface ProfileData {
   user: {
@@ -36,13 +48,7 @@ interface ProfileData {
       skinOfTeeth: number;
     };
   };
-  badges: Array<{
-    id: string;
-    title: string;
-    desc: string;
-    icon: string;
-    unlocked: boolean;
-  }>;
+  badges: BadgeItem[];
   history: Array<{
     gameDate: string;
     score: number;
@@ -56,8 +62,8 @@ export default function ProfilePage() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  const [showAllBadges, setShowAllBadges] = useState(false);
 
-  // Client stabil creat o singură dată
   const supabase = useMemo(() => {
     return createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -97,7 +103,9 @@ export default function ProfilePage() {
 
     async function checkAuth() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!mounted) return;
 
         if (session?.access_token) {
@@ -106,7 +114,7 @@ export default function ProfilePage() {
           setIsGuest(true);
           setIsLoading(false);
         }
-      } catch (err) {
+      } catch {
         if (mounted) {
           setIsGuest(true);
           setIsLoading(false);
@@ -116,19 +124,19 @@ export default function ProfilePage() {
 
     checkAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-        if (session?.access_token) {
-          setIsLoading(true);
-          await loadProfile(session.access_token);
-        } else if (event === "SIGNED_OUT") {
-          setIsGuest(true);
-          setData(null);
-          setIsLoading(false);
-        }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      if (session?.access_token) {
+        setIsLoading(true);
+        await loadProfile(session.access_token);
+      } else if (event === "SIGNED_OUT") {
+        setIsGuest(true);
+        setData(null);
+        setIsLoading(false);
       }
-    );
+    });
 
     return () => {
       mounted = false;
@@ -206,6 +214,19 @@ export default function ProfilePage() {
     stats.distribution.detective,
     stats.distribution.skinOfTeeth
   );
+
+  const unlockedCount = badges.filter((b) => b.unlocked).length;
+
+  // Sortăm insignele: cele deblocate sau cu progres ridicat primele
+  const sortedBadges = [...badges].sort((a, b) => {
+    if (a.unlocked && !b.unlocked) return -1;
+    if (!a.unlocked && b.unlocked) return 1;
+    const aProgress = a.current / a.target;
+    const bProgress = b.current / b.target;
+    return bProgress - aProgress;
+  });
+
+  const visibleBadges = showAllBadges ? sortedBadges : sortedBadges.slice(0, 4);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-6 sm:py-8 font-sans selection:bg-amber-500/30">
@@ -287,7 +308,7 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Clue Guess Distribution Chart */}
+        {/* Clue Guess Distribution */}
         <section aria-labelledby="guess-distribution-heading" className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl">
           <h2 id="guess-distribution-heading" className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-4 flex items-center gap-1.5">
             <Target className="w-4 h-4 text-amber-400" />
@@ -320,29 +341,69 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Milestones & Badges */}
-        <section aria-labelledby="badges-heading">
-          <h2 id="badges-heading" className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-3 flex items-center gap-1.5">
-            <Award className="w-4 h-4 text-amber-400" />
-            <span>Badges & Milestones</span>
-          </h2>
+        {/* Badges & Milestones cu Latest 4 și Progres x/y */}
+        <section aria-labelledby="badges-heading" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 id="badges-heading" className="text-xs uppercase tracking-wider font-bold text-slate-400 flex items-center gap-1.5">
+              <Award className="w-4 h-4 text-amber-400" />
+              <span>Badges & Milestones ({unlockedCount}/{badges.length})</span>
+            </h2>
+
+            <button
+              type="button"
+              onClick={() => setShowAllBadges(!showAllBadges)}
+              className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors"
+            >
+              <span>{showAllBadges ? "Show less" : `See all (${badges.length})`}</span>
+              {showAllBadges ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {badges.map((b) => (
-              <div
-                key={b.id}
-                className={`p-3.5 rounded-xl border flex items-center gap-3 transition-all ${
-                  b.unlocked
-                    ? "bg-slate-900/90 border-amber-500/40 text-slate-100 shadow-sm"
-                    : "bg-slate-950/40 border-slate-800/60 opacity-40 grayscale"
-                }`}
-              >
-                <div className="text-2xl flex-shrink-0">{b.icon}</div>
-                <div>
-                  <h3 className="text-xs font-bold text-slate-100">{b.title}</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{b.desc}</p>
+            {visibleBadges.map((b) => {
+              const progressPct = Math.min(100, Math.round((b.current / b.target) * 100));
+              return (
+                <div
+                  key={b.id}
+                  className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
+                    b.unlocked
+                      ? "bg-slate-900/90 border-amber-500/40 text-slate-100 shadow-sm"
+                      : "bg-slate-950/40 border-slate-800/60 opacity-60"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="text-2xl flex-shrink-0">{b.icon}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-xs font-bold text-slate-100 truncate">{b.title}</h3>
+                        {b.unlocked ? (
+                          <span className="text-[10px] bg-emerald-950/80 border border-emerald-800 text-emerald-400 font-bold px-1.5 py-0.2 rounded">
+                            Unlocked
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400 font-mono font-semibold">
+                            {b.current}/{b.target}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{b.desc}</p>
+                    </div>
+                  </div>
+
+                  {/* Progres x/y vizual */}
+                  <div className="mt-2.5 pt-2 border-t border-slate-800/40">
+                    <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-500 ${
+                          b.unlocked ? "bg-amber-400" : "bg-slate-600"
+                        }`}
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

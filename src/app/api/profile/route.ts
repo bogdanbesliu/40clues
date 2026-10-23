@@ -10,7 +10,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Missing authorization token" }, { status: 401 });
     }
 
-    // Folosim clientul standard cu cheia anonimă și injectăm direct token-ul utilizatorului
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,7 +22,6 @@ export async function GET(request: Request) {
       }
     );
 
-    // 1. Verificăm autenticitatea utilizatorului prin token
     const {
       data: { user },
       error: userError,
@@ -33,7 +31,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
     }
 
-    // 2. Extragem scorurile utilizatorului curent
+    // 1. Extragem toate scorurile utilizatorului
     const { data: scores, error: scoresError } = await supabase
       .from("user_scores")
       .select("game_date, score, clues_used, created_at")
@@ -41,11 +39,10 @@ export async function GET(request: Request) {
       .order("game_date", { ascending: false });
 
     if (scoresError) {
-      console.error("Supabase scores fetch error:", scoresError);
       return NextResponse.json({ error: scoresError.message }, { status: 500 });
     }
 
-    // 3. Extragem detaliile filmelor jucate pentru istoricul vizual
+    // 2. Extragem titlurile filmelor pentru istoric
     const gameDates = (scores || []).map((s) => s.game_date);
     const gamesMap: Record<string, { title: string; year: number }> = {};
 
@@ -60,7 +57,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // 4. Calcul Statistici Carieră
+    // 3. Calcul Statistici Carieră
     const totalPlayed = scores?.length || 0;
     const totalPoints = (scores || []).reduce((acc, curr) => acc + (curr.score || 0), 0);
     const avgClues =
@@ -73,14 +70,17 @@ export async function GET(request: Request) {
           )
         : 0;
 
-    // 5. Distribuția ghicirilor conform Game Design
     const distribution = {
-      psychic: 0, // 1-3 indicii
-      buff: 0, // 4-10 indicii
-      casual: 0, // 11-25 indicii
-      detective: 0, // 26-39 indicii
-      skinOfTeeth: 0, // 40 indicii
+      psychic: 0,
+      buff: 0,
+      casual: 0,
+      detective: 0,
+      skinOfTeeth: 0,
     };
+
+    let perfectScoresCount = 0; // scoruri de 1000 pct
+    let clutchWinsCount = 0; // ghicit la ultimul indiciu (40)
+    let underFiveCluesCount = 0; // ghicite în sub 5 indicii
 
     (scores || []).forEach((s) => {
       const c = s.clues_used;
@@ -89,9 +89,13 @@ export async function GET(request: Request) {
       else if (c <= 25) distribution.casual++;
       else if (c <= 39) distribution.detective++;
       else if (c === 40) distribution.skinOfTeeth++;
+
+      if (s.score === 1000) perfectScoresCount++;
+      if (c === 40) clutchWinsCount++;
+      if (c <= 5) underFiveCluesCount++;
     });
 
-    // 6. Calcul Streak curent și Streak maxim
+    // 4. Calcul Streak curent și Max Streak
     const sortedDates = (scores || [])
       .map((s) => s.game_date)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -130,7 +134,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // 7. Istoric
+    // 5. Istoric meciuri
     const history = (scores || []).map((s) => ({
       gameDate: s.game_date,
       score: s.score,
@@ -139,42 +143,142 @@ export async function GET(request: Request) {
       movieYear: gamesMap[s.game_date]?.year || "",
     }));
 
-    // 8. Badges deblocate
+    // 6. Suita completă de 15 Badges cu Progres (current / target)
     const badges = [
       {
         id: "first_win",
         title: "First Blood",
         desc: "Solve your very first movie puzzle",
         icon: "🎬",
+        current: Math.min(1, totalPlayed),
+        target: 1,
         unlocked: totalPlayed >= 1,
+      },
+      {
+        id: "streak_3",
+        title: "Hat-Trick",
+        desc: "Achieve a 3-day daily streak",
+        icon: "🎩",
+        current: Math.min(3, maxStreak),
+        target: 3,
+        unlocked: maxStreak >= 3,
+      },
+      {
+        id: "streak_7",
+        title: "Week Warrior",
+        desc: "Reach a 7-day win streak",
+        icon: "🔥",
+        current: Math.min(7, maxStreak),
+        target: 7,
+        unlocked: maxStreak >= 7,
+      },
+      {
+        id: "streak_14",
+        title: "Fortnight Fanatic",
+        desc: "Reach a 14-day daily streak",
+        icon: "⚡",
+        current: Math.min(14, maxStreak),
+        target: 14,
+        unlocked: maxStreak >= 14,
+      },
+      {
+        id: "streak_30",
+        title: "Monthly Master",
+        desc: "Conquer a 30-day streak without missing",
+        icon: "👑",
+        current: Math.min(30, maxStreak),
+        target: 30,
+        unlocked: maxStreak >= 30,
       },
       {
         id: "psychic_strike",
         title: "Cinephile Psychic",
-        desc: "Deduce a movie in 3 clues or fewer",
+        desc: "Deduce a film in 3 clues or fewer",
         icon: "🎯",
+        current: Math.min(1, distribution.psychic),
+        target: 1,
         unlocked: distribution.psychic >= 1,
       },
       {
-        id: "week_warrior",
-        title: "Week Warrior",
-        desc: "Reach a 7-day win streak",
-        icon: "🔥",
-        unlocked: maxStreak >= 7,
-      },
-      {
-        id: "century_club",
-        title: "Century Club",
-        desc: "Play 100 cinema puzzles",
-        icon: "🏆",
-        unlocked: totalPlayed >= 100,
+        id: "sharp_intuition",
+        title: "Sharp Intuition",
+        desc: "Solve 5 different movies in under 5 clues",
+        icon: "👁️",
+        current: Math.min(5, underFiveCluesCount),
+        target: 5,
+        unlocked: underFiveCluesCount >= 5,
       },
       {
         id: "perfectionist",
         title: "Perfectionist",
-        desc: "Score a maximum 1,000 points on a puzzle",
+        desc: "Score a maximum 1,000 pts on a puzzle",
         icon: "✨",
-        unlocked: (scores || []).some((s) => s.score === 1000),
+        current: Math.min(1, perfectScoresCount),
+        target: 1,
+        unlocked: perfectScoresCount >= 1,
+      },
+      {
+        id: "skin_of_teeth",
+        title: "Clutch Detective",
+        desc: "Solve a puzzle on the 40th and final clue",
+        icon: "🪢",
+        current: Math.min(1, clutchWinsCount),
+        target: 1,
+        unlocked: clutchWinsCount >= 1,
+      },
+      {
+        id: "silver_screen",
+        title: "Silver Screen Veteran",
+        desc: "Successfully solve 10 movie puzzles",
+        icon: "🎞️",
+        current: Math.min(10, totalPlayed),
+        target: 10,
+        unlocked: totalPlayed >= 10,
+      },
+      {
+        id: "director_cut",
+        title: "Director's Cut",
+        desc: "Successfully solve 25 movie puzzles",
+        icon: "📽️",
+        current: Math.min(25, totalPlayed),
+        target: 25,
+        unlocked: totalPlayed >= 25,
+      },
+      {
+        id: "century_club",
+        title: "Century Club",
+        desc: "Play and solve 100 cinema puzzles",
+        icon: "🏆",
+        current: Math.min(100, totalPlayed),
+        target: 100,
+        unlocked: totalPlayed >= 100,
+      },
+      {
+        id: "point_collector",
+        title: "High Roller",
+        desc: "Accumulate 5,000 total career points",
+        icon: "🪙",
+        current: Math.min(5000, totalPoints),
+        target: 5000,
+        unlocked: totalPoints >= 5000,
+      },
+      {
+        id: "score_titan",
+        title: "Score Titan",
+        desc: "Accumulate 20,000 total career points",
+        icon: "💎",
+        current: Math.min(20000, totalPoints),
+        target: 20000,
+        unlocked: totalPoints >= 20000,
+      },
+      {
+        id: "hall_of_fame",
+        title: "Cinephile Legend",
+        desc: "Reach a 50-day daily streak",
+        icon: "🌟",
+        current: Math.min(50, maxStreak),
+        target: 50,
+        unlocked: maxStreak >= 50,
       },
     ];
 
