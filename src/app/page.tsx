@@ -15,6 +15,8 @@ import {
   Film,
   HelpCircle,
   FastForward,
+  User,
+  UserCircle,
 } from "lucide-react";
 import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
@@ -407,41 +409,45 @@ export default function Home() {
           </button>
 
           {user ? (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <Link
                 href="/profile"
-                className="flex items-center gap-1.5 p-1 rounded-full hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700"
-                title="View Profile & Stats"
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group"
+                title="View Profile & Career Stats"
               >
                 {user.user_metadata?.avatar_url ? (
                   <img
                     src={user.user_metadata.avatar_url}
-                    alt=""
-                    aria-hidden="true"
-                    className="w-8 h-8 rounded-full border border-amber-400/80 object-cover"
+                    alt="Profile"
+                    className="w-6 h-6 rounded-full border border-amber-400/80 object-cover"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
+                  <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
                     {(user.email || "U").charAt(0).toUpperCase()}
                   </div>
                 )}
+                <span className="text-xs font-semibold text-slate-300 group-hover:text-amber-300 hidden sm:inline">
+                  Profile
+                </span>
               </Link>
+
               <button
                 onClick={handleSignOut}
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-slate-100 active:scale-95 rounded-full transition-all"
+                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-rose-400 active:scale-95 rounded-lg transition-all p-1.5 hover:bg-slate-900"
                 title="Sign out"
                 aria-label="Sign out"
               >
-                <LogOut className="w-4 h-4" aria-hidden="true" />
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           ) : (
             <button
-              onClick={handleGoogleLogin}
-              className="min-h-[40px] flex items-center gap-1.5 text-xs font-semibold bg-slate-900 border border-slate-700 hover:border-slate-600 active:scale-95 px-3 rounded-full text-slate-100 transition-all"
+              onClick={handleGoogleSignIn}
+              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95"
+              title="Sign in with Google"
             >
-              <LogIn className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-              <span className="hidden xs:inline">Sign in</span>
+              <User className="w-4 h-4 text-amber-400" />
+              <span>Sign In</span>
             </button>
           )}
         </div>
