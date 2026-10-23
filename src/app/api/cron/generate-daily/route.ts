@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { runDailyGenerator } from "@/../scripts/generate-daily";
 
-export const maxDuration = 60; // Oferă până la 60 secunde pentru apelul Gemini
+// Permite funcției să ruleze până la 60 secunde pe Vercel fără 504 Timeout
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
@@ -28,7 +30,7 @@ export async function GET(request: Request) {
   } catch (err: any) {
     console.error("Cron failed:", err);
     return NextResponse.json(
-      { error: "Generation failed", details: err?.message },
+      { error: "Generation failed", details: err?.message || String(err) },
       { status: 500 }
     );
   }
