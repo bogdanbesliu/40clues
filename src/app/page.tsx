@@ -10,6 +10,7 @@ import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
 import LeaderboardModal from "@/components/LeaderboardModal";
 import HowToPlayModal from "@/components/HowToPlayModal";
+import FeedbackModal from "@/components/FeedbackModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 import { shuffleArray } from "@/lib/utils";
@@ -53,6 +54,7 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showRemainingClues, setShowRemainingClues] = useState(false);
@@ -455,8 +457,8 @@ export default function Home() {
         <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/80">
           <div
             className={`h-full transition-all duration-500 ease-out ${clueNumber <= 10 ? "bg-gradient-to-r from-emerald-500 to-amber-400"
-                : clueNumber <= 25 ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                  : "bg-gradient-to-r from-orange-500 to-rose-500"
+              : clueNumber <= 25 ? "bg-gradient-to-r from-amber-400 to-orange-500"
+                : "bg-gradient-to-r from-orange-500 to-rose-500"
               }`}
             style={{ width: `${progressPercent}%` }}
           />
@@ -510,8 +512,8 @@ export default function Home() {
         {/* Live Status Toast */}
         {message && (
           <div role="status" aria-live="polite" className={`p-3 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all shadow-md ${hasWon ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-200"
-              : hasLost ? "bg-rose-950/90 border border-rose-600/80 text-rose-200"
-                : "bg-slate-900 border border-slate-700 text-slate-200"
+            : hasLost ? "bg-rose-950/90 border border-rose-600/80 text-rose-200"
+              : "bg-slate-900 border border-slate-700 text-slate-200"
             }`}>
             {message}
           </div>
@@ -632,13 +634,40 @@ export default function Home() {
         )}
       </div>
 
+      {/* Footer */}
       <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
         <div>© 40Clues 2026. All rights reserved.</div>
-        <Link href="/privacy" className="hover:text-amber-400 transition-colors underline underline-offset-4">Privacy Policy</Link>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsFeedbackOpen(true)}
+            className="hover:text-amber-400 transition-colors underline underline-offset-4"
+          >
+            Give Feedback
+          </button>
+          <Link
+            href="/privacy"
+            className="hover:text-amber-400 transition-colors underline underline-offset-4"
+          >
+            Privacy Policy
+          </Link>
+        </div>
       </footer>
 
-      <LeaderboardModal isOpen={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} gameDate={gameDate} />
-      <HowToPlayModal isOpen={isHowToPlayOpen} onClose={() => setIsHowToPlayOpen(false)} />
+      {/* Modals */}
+      <LeaderboardModal
+        isOpen={isLeaderboardOpen}
+        onClose={() => setIsLeaderboardOpen(false)}
+        gameDate={gameDate}
+      />
+      <HowToPlayModal
+        isOpen={isHowToPlayOpen}
+        onClose={() => setIsHowToPlayOpen(false)}
+      />
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
+        userId={user?.id}
+      />
     </main>
   );
 }
