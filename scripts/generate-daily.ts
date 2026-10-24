@@ -148,4 +148,15 @@ STRICT RULES:
     cluesCount: clues.length,
     gameDate: today,
   };
+
+  runDailyGenerator()
+    .then((res) => {
+      console.log("✅ Generator finished:", res);
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error("❌ Fatal Error:", err);
+      process.exit(1);
+    });
+
 }
