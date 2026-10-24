@@ -3,19 +3,8 @@
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import {
-  Sparkles,
-  Trophy,
-  Share2,
-  Check,
-  Flame,
-  LogIn,
-  LogOut,
-  ChevronDown,
-  ChevronUp,
-  Film,
-  HelpCircle,
-  FastForward,
-  User,
+  Sparkles, Trophy, Share2, Check, Flame, LogIn, LogOut,
+  ChevronDown, ChevronUp, Film, HelpCircle, FastForward, User, Menu
 } from "lucide-react";
 import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
@@ -34,6 +23,8 @@ interface SolutionData {
 interface StoredGameProgress {
   gameDate: string;
   clueNumber: number;
+  scorePenalty: number;
+  hasUsedFreePass: boolean;
   attempts: string[];
   userDeck: string[];
   unlockedClues: string[];
@@ -48,6 +39,11 @@ export default function Home() {
   const [userDeck, setUserDeck] = useState<string[]>([]);
   const [unlockedClues, setUnlockedClues] = useState<string[]>([]);
   const [attempts, setAttempts] = useState<string[]>([]);
+
+  // Scor & Pass
+  const [scorePenalty, setScorePenalty] = useState<number>(0);
+  const [hasUsedFreePass, setHasUsedFreePass] = useState<boolean>(false);
+
   const [hasWon, setHasWon] = useState(false);
   const [hasLost, setHasLost] = useState(false);
   const [solution, setSolution] = useState<SolutionData | null>(null);
@@ -58,6 +54,9 @@ export default function Home() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showRemainingClues, setShowRemainingClues] = useState(false);
+
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,135 +70,71 @@ export default function Home() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const calculateScore = (cluesUsed: number) => {
-    return Math.max(25, 1000 - (cluesUsed - 1) * 25);
-  };
-
-  const currentPotentialScore = calculateScore(clueNumber);
-  const progressPercent = Math.min(100, Math.round((clueNumber / totalClues) * 100));
+  const currentPotentialScore = Math.max(25, 1000 - scorePenalty);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const activeUser = session?.user ?? null;
-      setUser(activeUser);
-      if (activeUser) {
-        checkAndSyncPendingLocalScore(session?.access_token);
-      }
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user);
+      if (user) checkAndSyncPendingLocalScore(user.id);
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const activeUser = session?.user ?? null;
       setUser(activeUser);
-      if (activeUser) {
-        checkAndSyncPendingLocalScore(session?.access_token);
-      }
+      if (activeUser) checkAndSyncPendingLocalScore(activeUser.id);
     });
 
     initGame();
-
     return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
     if (hasWon) {
-      const target = calculateScore(clueNumber);
       let current = 0;
-      const step = Math.max(15, Math.ceil(target / 25));
-      const interval = setInterval(() => {
+      const step = Math.ceil(currentPotentialScore / 35);
+      const timer = setInterval(() => {
         current += step;
-        if (current >= target) {
-          setAnimatedScore(target);
-          clearInterval(interval);
+        if (current >= currentPotentialScore) {
+          setAnimatedScore(currentPotentialScore);
+          clearInterval(timer);
         } else {
           setAnimatedScore(current);
         }
-      }, 25);
-      return () => clearInterval(interval);
+      }, 20);
+      return () => clearInterval(timer);
     }
-  }, [hasWon, clueNumber]);
+  }, [hasWon, currentPotentialScore]);
 
-  const syncScoreToDatabase = async (
-    cluesUsed: number,
-    score: number,
-    targetDate?: string,
-    explicitToken?: string
-  ) => {
-    try {
-      let token = explicitToken;
-      if (!token) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        token = session?.access_token;
-      }
-
-      // Generăm un username consistent pentru jucătorii nelogați
-      let anonName = localStorage.getItem("40clues_anon_name");
-      if (!anonName) {
-        anonName = `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
-        localStorage.setItem("40clues_anon_name", anonName);
-      }
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      await fetch("/api/score", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          gameDate: targetDate || gameDate,
-          cluesUsed,
-          score,
-          anonName,
-        }),
-      });
-    } catch (err) {
-      console.error("Failed to sync score:", err);
-    }
-  };
-
-  const checkAndSyncPendingLocalScore = async (accessToken?: string) => {
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith("40clues_progress_")) {
-          const raw = localStorage.getItem(key);
-          if (!raw) continue;
-          const parsed: StoredGameProgress = JSON.parse(raw);
-          const dateFromKey = key.replace("40clues_progress_", "");
-          const targetDate = parsed.gameDate || dateFromKey;
-          if (parsed.hasWon && targetDate) {
-            const score = calculateScore(parsed.clueNumber || 1);
-            await syncScoreToDatabase(parsed.clueNumber || 1, score, targetDate, accessToken);
-          }
+  const checkAndSyncPendingLocalScore = async (_userId: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    const savedLocal = localStorage.getItem(`40clues_progress_${today}`);
+    if (savedLocal) {
+      try {
+        const parsed: StoredGameProgress = JSON.parse(savedLocal);
+        if (parsed.hasWon && parsed.solution) {
+          const score = Math.max(25, 1000 - (parsed.scorePenalty || 0));
+          await syncScoreToDatabase(parsed.clueNumber, score, today);
         }
+      } catch (err) {
+        console.error("Local sync error:", err);
       }
-    } catch (err) {
-      console.error("Failed to parse saved progress:", err);
     }
   };
 
   const initGame = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/game?clue=1");
+      const res = await fetch("/api/game");
       const data = await res.json();
-
       if (!res.ok) {
-        setMessage("Could not load today's game. Check Supabase connection.");
+        setMessage("Could not load today's game. Check connection.");
         setIsLoading(false);
         return;
       }
 
-      const today = data.gameDate || data.game_date || new Date().toISOString().split("T")[0];
+      const today = data.gameDate;
       setGameDate(today);
-      setTotalClues(data.totalClues || 40);
+      setTotalClues(data.totalClues);
 
       const savedStreak = parseInt(localStorage.getItem("40clues_streak") || "0", 10);
       setStreak(savedStreak);
@@ -207,42 +142,37 @@ export default function Home() {
       const savedLocal = localStorage.getItem(`40clues_progress_${today}`);
       if (savedLocal) {
         const parsed: StoredGameProgress = JSON.parse(savedLocal);
-        setClueNumber(parsed.clueNumber || 1);
+        setClueNumber(parsed.clueNumber);
+        setScorePenalty(parsed.scorePenalty || 0);
+        setHasUsedFreePass(parsed.hasUsedFreePass || false);
         setAttempts(parsed.attempts || []);
         setUserDeck(parsed.userDeck || []);
         setUnlockedClues(parsed.unlockedClues || []);
-        setHasWon(parsed.hasWon || false);
-        setHasLost(parsed.hasLost || false);
-        setSolution(parsed.solution || null);
+        setHasWon(parsed.hasWon);
+        setHasLost(parsed.hasLost);
+        setSolution(parsed.solution);
       } else {
-        const rawClues: string[] = Array.isArray(data.allClues)
-          ? data.allClues
-          : Array.isArray(data.clues)
-            ? data.clues
-            : data.clue
-              ? [data.clue]
-              : [];
-
-        const shuffled = rawClues.length > 1 ? shuffleArray(rawClues) : rawClues;
-        const firstClue = shuffled[0] || data.clue || "No clue available.";
-
-        setUserDeck(shuffled);
-        setUnlockedClues([firstClue]);
+        const rawClues: string[] = (data.allClues as string[]) || [];
+        const deck: string[] = shuffleArray(rawClues);
+        setUserDeck(deck);
+        setUnlockedClues([deck[0] || "No clue available"]);
         setClueNumber(1);
 
         const initialProgress: StoredGameProgress = {
           gameDate: today,
           clueNumber: 1,
+          scorePenalty: 0,
+          hasUsedFreePass: false,
           attempts: [],
-          userDeck: shuffled,
-          unlockedClues: [firstClue],
+          userDeck: deck,
+          unlockedClues: [deck[0] || "No clue available"],
           hasWon: false,
           hasLost: false,
           solution: null,
         };
         localStorage.setItem(`40clues_progress_${today}`, JSON.stringify(initialProgress));
       }
-    } catch {
+    } catch (err) {
       setMessage("Network error while loading game.");
     } finally {
       setIsLoading(false);
@@ -252,9 +182,7 @@ export default function Home() {
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
   };
 
@@ -263,10 +191,23 @@ export default function Home() {
     setUser(null);
   };
 
+  const syncScoreToDatabase = async (cluesUsed: number, score: number, targetDate?: string) => {
+    try {
+      await fetch("/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ gameDate: targetDate || gameDate, cluesUsed, score }),
+      });
+    } catch (err) {
+      console.error("Failed to sync score:", err);
+    }
+  };
+
   const saveProgress = (
     nextClueNum: number,
+    newPenalty: number,
+    usedFreePass: boolean,
     newAttempts: string[],
-    deck: string[],
     newUnlockedClues: string[],
     won: boolean,
     lost: boolean,
@@ -276,8 +217,10 @@ export default function Home() {
     const progress: StoredGameProgress = {
       gameDate,
       clueNumber: nextClueNum,
+      scorePenalty: newPenalty,
+      hasUsedFreePass: usedFreePass,
       attempts: newAttempts,
-      userDeck: deck,
+      userDeck: userDeck,
       unlockedClues: newUnlockedClues,
       hasWon: won,
       hasLost: lost,
@@ -286,11 +229,11 @@ export default function Home() {
     localStorage.setItem(`40clues_progress_${gameDate}`, JSON.stringify(progress));
   };
 
-  const getRankBadge = (cluesCount: number) => {
-    if (cluesCount <= 3) return "🎯 Cinephile Psychic";
-    if (cluesCount <= 10) return "🍿 Film Buff";
-    if (cluesCount <= 25) return "🎟️ Casual Viewer";
-    if (cluesCount <= 39) return "🕵️ Desperate Detective";
+  const getRankBadge = (scoreValue: number) => {
+    if (scoreValue >= 950) return "🎯 Cinephile Psychic";
+    if (scoreValue >= 800) return "🍿 Film Buff";
+    if (scoreValue >= 500) return "🎟️ Casual Viewer";
+    if (scoreValue >= 200) return "🕵️ Desperate Detective";
     return "🪢 By the Skin of Your Teeth";
   };
 
@@ -305,11 +248,33 @@ export default function Home() {
     setTimeout(() => setIsShakeActive(false), 500);
   };
 
+  const handleSkipClue = () => {
+    if (hasWon || hasLost || isSubmitting || clueNumber >= totalClues) return;
+    const nextNum = clueNumber + 1;
+    const nextClueText = userDeck[nextNum - 1];
+    if (!nextClueText) return;
+
+    const penaltyToAdd = hasUsedFreePass ? 10 : 0;
+    const newPenalty = scorePenalty + penaltyToAdd;
+    const toastMsg = hasUsedFreePass ? "Clue passed (-10 pts)" : "Free Pass used! (0 pts deducted)";
+
+    setIsClueFading(true);
+    setTimeout(() => {
+      const newUnlocked = [...unlockedClues, nextClueText];
+      setClueNumber(nextNum);
+      setScorePenalty(newPenalty);
+      if (!hasUsedFreePass) setHasUsedFreePass(true);
+      setUnlockedClues(newUnlocked);
+      setIsClueFading(false);
+      setMessage(toastMsg);
+      saveProgress(nextNum, newPenalty, true, attempts, newUnlocked, false, false, null);
+    }, 150);
+  };
+
   const handleMovieGuess = async (selectedTitle: string) => {
     if (!selectedTitle || hasWon || hasLost || isSubmitting) return;
-
     if (attempts.some((a) => a.toLowerCase() === selectedTitle.toLowerCase())) {
-      setMessage("You already guessed that movie! Try another one.");
+      setMessage(`You already tried "${selectedTitle}"! Pick another film.`);
       triggerErrorShake();
       return;
     }
@@ -325,18 +290,13 @@ export default function Home() {
 
       if (data.correct) {
         setHasWon(true);
-        const sol: SolutionData = {
-          title: data.title,
-          year: data.year,
-          poster: data.poster || null,
-        };
+        const sol: SolutionData = { title: data.title, year: data.year, poster: data.poster || null };
         setSolution(sol);
-        setMessage("Correct! Brilliant deduction!");
-        confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
+        setMessage("Spot on! Brilliant deduction!");
+        confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
         updateStreakOnWin();
-        const score = calculateScore(clueNumber);
-        saveProgress(clueNumber, attempts, userDeck, unlockedClues, true, false, sol);
-        await syncScoreToDatabase(clueNumber, score, gameDate);
+        saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol);
+        if (user) syncScoreToDatabase(clueNumber, currentPotentialScore);
       } else {
         triggerErrorShake();
         const newAttempts = [selectedTitle, ...attempts];
@@ -344,204 +304,167 @@ export default function Home() {
 
         if (data.gameOver || clueNumber >= totalClues) {
           setHasLost(true);
-          const sol = data.solution || null;
-          setSolution(sol);
-          setMessage(
-            sol
-              ? `Game over! The movie was: ${sol.title} (${sol.year})`
-              : "Game over! You ran out of clues."
-          );
+          const finalSol: SolutionData = { title: data.solution?.title || "", year: data.solution?.year || 0, poster: data.solution?.poster || null };
+          setSolution(finalSol);
+          setMessage(`Game over! The movie was: ${finalSol.title} (${finalSol.year})`);
           localStorage.setItem("40clues_streak", "0");
           setStreak(0);
-          saveProgress(clueNumber, newAttempts, userDeck, unlockedClues, false, true, sol);
+          saveProgress(clueNumber, scorePenalty, hasUsedFreePass, newAttempts, unlockedClues, false, true, finalSol);
         } else {
           setIsClueFading(true);
+          const newPenalty = scorePenalty + 25;
           setTimeout(() => {
             const nextNum = clueNumber + 1;
-            const nextClueText =
-              userDeck.length >= nextNum ? userDeck[nextNum - 1] : data.nextClue;
+            const nextClueText = userDeck[nextNum - 1];
             const newUnlocked = [...unlockedClues, nextClueText];
             setClueNumber(nextNum);
+            setScorePenalty(newPenalty);
             setUnlockedClues(newUnlocked);
             setIsClueFading(false);
-            setMessage("Incorrect! Next clue unlocked.");
-            saveProgress(nextNum, newAttempts, userDeck, newUnlocked, false, false, null);
+            setMessage("Incorrect! Next clue unlocked (-25 pts).");
+            saveProgress(nextNum, newPenalty, hasUsedFreePass, newAttempts, newUnlocked, false, false, null);
           }, 150);
         }
       }
-    } catch {
+    } catch (err) {
       setMessage("Error checking answer. Try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSkipClue = async () => {
-    if (hasWon || hasLost || isLoading || isSubmitting || clueNumber >= totalClues) return;
+  const handleShare = () => {
+    const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
+    const greenBlock = "🟩";
+    const blackBlock = "⬛";
+    const emojiGrid = greenBlock.repeat(Math.max(1, 6 - blocksCount)) + blackBlock.repeat(blocksCount - 1);
+    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues\n🏆 ${currentPotentialScore} pts\n🔥 ${streak}-day streak\n${emojiGrid}\n\nhttps://40clues.com`;
 
-    setIsClueFading(true);
-    setTimeout(async () => {
-      const nextNum = clueNumber + 1;
-      let nextClueText = userDeck.length >= nextNum ? userDeck[nextNum - 1] : "";
-
-      if (!nextClueText) {
-        try {
-          const res = await fetch(`/api/game?clue=${nextNum}`);
-          const data = await res.json();
-          nextClueText = data.clue || "Next clue unlocked.";
-        } catch {
-          nextClueText = "Next clue unlocked.";
-        }
-      }
-
-      const newUnlocked = [...unlockedClues, nextClueText];
-      setClueNumber(nextNum);
-      setUnlockedClues(newUnlocked);
-      setIsClueFading(false);
-      setMessage("Skipped to next clue (-25 pts).");
-      saveProgress(nextNum, attempts, userDeck, newUnlocked, false, false, null);
-    }, 150);
-  };
-
-  const handleShare = async () => {
-    const finalScore = hasWon ? calculateScore(clueNumber) : 0;
-    const puzzleDate = gameDate ? gameDate.replace(/-/g, ".") : "Daily";
-
-    let grid = "";
-    if (hasWon) {
-      const yellowCount = Math.max(0, clueNumber - 1);
-      const fullSequence = "🟨".repeat(yellowCount) + "🟩";
-      for (let i = 0; i < fullSequence.length; i += 5) {
-        grid += fullSequence.slice(i, i + 5) + "\n";
-      }
-    } else {
-      grid = "⬛⬛⬛⬛⬛\n";
-    }
-
-    const streakDisplay = streak > 0 ? ` • 🔥 ${streak}-day streak` : "";
-    const shareText = `40Clues #${puzzleDate} 🎬\n💡 ${clueNumber}/${totalClues} clues used\n🏆 ${finalScore} pts${streakDisplay}\n\n${grid.trim()}\nhttps://40clues.com`;
-
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(shareText);
-        setHasCopied(true);
-        setTimeout(() => setHasCopied(false), 2500);
-      }
-    } catch (err) {
-      console.error("Clipboard copy failed", err);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareText);
+      setHasCopied(true);
+      setTimeout(() => setHasCopied(false), 2500);
     }
   };
+
+  const progressPercent = Math.min(100, Math.round((clueNumber / totalClues) * 100));
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-6 sm:py-8 font-sans selection:bg-amber-500/30">
       {/* Header */}
-      <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
+      <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800/80 pb-4 mb-3 relative">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
             40Clues
           </h1>
-          <p className="text-xs uppercase tracking-widest text-slate-300 font-semibold mt-0.5">
+          <p className="text-[10px] sm:text-[11px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">
             Cinema Edition
           </p>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           {streak > 0 && (
-            <div
-              className="flex items-center gap-1 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 px-2.5 py-1.5 rounded-full shadow-sm"
-              title={`${streak}-day win streak`}
-            >
-              <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" aria-hidden="true" />
+            <div className="flex items-center gap-1 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 px-2.5 py-1.5 rounded-full shadow-sm">
+              <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
               <span>{streak}</span>
             </div>
           )}
 
           <button
             onClick={() => setIsHowToPlayOpen(true)}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
-            title="How to play"
-            aria-label="How to play"
+            className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
           >
-            <HelpCircle className="w-4 h-4" aria-hidden="true" />
+            <HelpCircle className="w-4 h-4" />
+            {/* PING ONBOARDING: Pulsează dacă nu ai streak și ești la primul indiciu */}
+            {streak === 0 && unlockedClues.length <= 1 && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+              </span>
+            )}
           </button>
 
-          <button
-            onClick={() => setIsLeaderboardOpen(true)}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
-            title="Open Daily Leaderboard"
-            aria-label="Open Daily Leaderboard"
-          >
-            <Trophy className="w-4 h-4" aria-hidden="true" />
-          </button>
-
-          {user ? (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/profile"
-                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group"
-                title="View Profile & Career Stats"
-              >
-                {user.user_metadata?.avatar_url ? (
-                  <img
-                    src={user.user_metadata.avatar_url}
-                    alt="Profile"
-                    className="w-6 h-6 rounded-full border border-amber-400/80 object-cover"
-                  />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
-                    {(user.email || "U").charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <span className="text-xs font-semibold text-slate-300 group-hover:text-amber-300 hidden sm:inline">
-                  Profile
-                </span>
-              </Link>
-
-              <button
-                onClick={handleSignOut}
-                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-rose-400 active:scale-95 rounded-lg transition-all p-1.5 hover:bg-slate-900"
-                title="Sign out"
-                aria-label="Sign out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleGoogleLogin}
-              className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95"
-              title="Sign in with Google"
-            >
-              <User className="w-4 h-4 text-amber-400" />
-              <span>Sign In</span>
+          {/* Desktop Menu */}
+          <div className="hidden sm:flex items-center gap-2">
+            <button onClick={() => setIsLeaderboardOpen(true)} className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all">
+              <Trophy className="w-4 h-4" />
             </button>
-          )}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <Link href="/profile" className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group">
+                  {user.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-6 h-6 rounded-full border border-amber-400/80 object-cover" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
+                      {(user.email || "U").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="text-xs font-semibold text-slate-300 group-hover:text-amber-300">Profile</span>
+                </Link>
+                <button onClick={handleSignOut} className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-rose-400 active:scale-95 rounded-lg transition-all p-1.5 hover:bg-slate-900">
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button onClick={handleGoogleLogin} className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
+                <User className="w-4 h-4 text-amber-400" />
+                <span>Sign In</span>
+              </button>
+            )}
+          </div>
+
+          {/* Mobile Menu Dropdown */}
+          <div className="sm:hidden relative">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 active:scale-95 transition-all"
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+            {isMobileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-xl flex flex-col p-2 z-50">
+                <button onClick={() => { setIsLeaderboardOpen(true); setIsMobileMenuOpen(false); }} className="flex items-center gap-2 p-2 text-sm text-slate-200 hover:bg-slate-800 rounded-lg text-left">
+                  <Trophy className="w-4 h-4 text-amber-400" /> Leaderboard
+                </button>
+                {user ? (
+                  <>
+                    <Link href="/profile" className="flex items-center gap-2 p-2 text-sm text-slate-200 hover:bg-slate-800 rounded-lg text-left">
+                      <User className="w-4 h-4 text-emerald-400" /> My Profile
+                    </Link>
+                    <button onClick={handleSignOut} className="flex items-center gap-2 p-2 text-sm text-rose-400 hover:bg-slate-800 rounded-lg text-left">
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={handleGoogleLogin} className="flex items-center gap-2 p-2 text-sm text-slate-200 hover:bg-slate-800 rounded-lg text-left">
+                    <LogIn className="w-4 h-4 text-emerald-400" /> Sign In
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Visual Clue Progress Bar */}
       <div className="max-w-xl w-full mb-5">
         <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1.5">
-          <span>
-            Clue {clueNumber} of {totalClues}
-          </span>
+          <span>Clue {clueNumber} of {totalClues}</span>
           <span className="text-amber-400">{currentPotentialScore} pts left</span>
         </div>
         <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/80">
           <div
-            className={`h-full transition-all duration-500 ease-out ${clueNumber <= 10
-              ? "bg-gradient-to-r from-emerald-500 to-amber-400"
-              : clueNumber <= 25
-                ? "bg-gradient-to-r from-amber-400 to-orange-500"
-                : "bg-gradient-to-r from-orange-500 to-rose-500"
+            className={`h-full transition-all duration-500 ease-out ${clueNumber <= 10 ? "bg-gradient-to-r from-emerald-500 to-amber-400"
+                : clueNumber <= 25 ? "bg-gradient-to-r from-amber-400 to-orange-500"
+                  : "bg-gradient-to-r from-orange-500 to-rose-500"
               }`}
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      {/* Main Container */}
-      <div className="max-w-xl w-full flex flex-col gap-5 flex-1">
+      <div className="max-w-xl w-full flex flex-col gap-5">
+        {/* Active Clue Card / Skeleton Screen */}
         {isLoading ? (
           <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 min-h-[160px] animate-pulse flex flex-col justify-between">
             <div className="flex justify-between items-center">
@@ -555,127 +478,82 @@ export default function Home() {
             <div className="h-3 bg-slate-800/60 rounded w-24" />
           </div>
         ) : (
-          <section
-            aria-labelledby="active-clue-heading"
-            className="relative overflow-hidden bg-slate-900/95 border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur min-h-[160px] flex flex-col justify-between transition-all"
-          >
+          <section className="relative overflow-hidden bg-slate-900/95 border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur min-h-[160px] flex flex-col justify-between transition-all">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  id="active-clue-heading"
-                  className="flex items-center gap-1.5 text-amber-400 font-bold tracking-wide text-xs"
-                >
-                  <Sparkles className="w-4 h-4" aria-hidden="true" /> Clue #{clueNumber}
+                <span className="flex items-center gap-1.5 text-amber-400 font-bold tracking-wide text-xs">
+                  <Sparkles className="w-4 h-4" /> Clue #{clueNumber}
                 </span>
-
-                {unlockedClues.length > 0 &&
-                  (() => {
-                    const currentClueText = unlockedClues[unlockedClues.length - 1];
-                    const badge = getClueBadge(currentClueText, clueNumber);
-                    return (
-                      <span
-                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${badge.colorClass}`}
-                      >
-                        <span aria-hidden="true">{badge.emoji}</span>
-                        <span>{badge.label}</span>
-                      </span>
-                    );
-                  })()}
+                {unlockedClues.length > 0 && (() => {
+                  const badge = getClueBadge(unlockedClues[unlockedClues.length - 1], clueNumber);
+                  return (
+                    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${badge.colorClass}`}>
+                      <span>{badge.emoji}</span><span>{badge.label}</span>
+                    </span>
+                  );
+                })()}
               </div>
-
-              <span className="bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-md text-amber-300 font-bold text-xs flex-shrink-0 shadow-inner">
+              <span className="bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-md text-amber-300 font-bold text-xs shadow-inner">
                 {currentPotentialScore} pts
               </span>
             </div>
-
-            <p
-              aria-live="polite"
-              className={`text-base sm:text-xl font-medium text-slate-100 leading-relaxed italic my-auto transition-all duration-200 ${isClueFading ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"
-                }`}
-            >
+            <p aria-live="polite" className={`text-base sm:text-xl font-medium text-slate-100 leading-relaxed italic my-auto transition-all duration-200 ${isClueFading ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
               "{unlockedClues[unlockedClues.length - 1]}"
             </p>
-
             <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
               <span>{attempts.length} attempts</span>
-              <span className="text-amber-500/80">{totalClues} total clues</span>
+              <span className="text-amber-500/80">40 total clues</span>
             </div>
           </section>
         )}
 
+        {/* Live Status Toast */}
         {message && (
-          <div
-            role="status"
-            aria-live="polite"
-            className={`p-3 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all shadow-md ${hasWon
-              ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-200"
-              : hasLost
-                ? "bg-rose-950/90 border border-rose-600/80 text-rose-200"
+          <div role="status" aria-live="polite" className={`p-3 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all shadow-md ${hasWon ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-200"
+              : hasLost ? "bg-rose-950/90 border border-rose-600/80 text-rose-200"
                 : "bg-slate-900 border border-slate-700 text-slate-200"
-              }`}
-          >
+            }`}>
             {message}
           </div>
         )}
 
+        {/* Input & Pass Button Row */}
         {!hasWon && !hasLost ? (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <MovieSearchInput
-                disabled={isLoading || isSubmitting}
-                isErrorShake={isShakeActive}
-                onSelectMovie={handleMovieGuess}
-              />
+              <MovieSearchInput disabled={isLoading || isSubmitting} isErrorShake={isShakeActive} onSelectMovie={handleMovieGuess} />
               <button
                 type="button"
                 onClick={handleSkipClue}
                 disabled={isLoading || isSubmitting || clueNumber >= totalClues}
                 className="min-h-[48px] px-3.5 bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700/80 rounded-xl text-slate-300 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 disabled:opacity-40"
-                title="Skip to next clue (-25 pts)"
               >
                 <FastForward className="w-4 h-4" />
-                <span className="hidden sm:inline">Pass (-25 pts)</span>
+                <span className="hidden sm:inline">{hasUsedFreePass ? "Pass (-10)" : "Free Pass"}</span>
               </button>
             </div>
           </div>
         ) : (
-          <section
-            aria-label="Game Result"
-            className="bg-slate-900 border border-slate-800/90 p-5 sm:p-7 rounded-2xl text-center flex flex-col items-center gap-4 sm:gap-5 shadow-2xl"
-          >
+          <section className="bg-slate-900 border border-slate-800/90 p-5 sm:p-7 rounded-2xl text-center flex flex-col items-center gap-4 sm:gap-5 shadow-2xl">
             <div className="flex flex-col items-center">
               <span className="text-4xl mb-1">{hasWon ? "🎉" : "🎬"}</span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100">
-                {hasWon ? "Cinema Mastermind!" : "Game Over"}
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                {hasWon
-                  ? "You successfully deduced today's movie!"
-                  : "Better luck on tomorrow's clues!"}
-              </p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100">{hasWon ? "Cinema Mastermind!" : "Game Over"}</h2>
+              <p className="text-xs text-slate-400 mt-1">{hasWon ? "You successfully deduced today's movie!" : "Better luck on tomorrow's clues!"}</p>
             </div>
 
             {solution && (
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl w-full">
                 {solution.poster ? (
-                  <img
-                    src={solution.poster}
-                    alt={solution.title}
-                    className="w-20 sm:w-24 h-30 sm:h-36 object-cover rounded-lg shadow-lg border border-slate-700 flex-shrink-0"
-                  />
+                  <img src={solution.poster} alt={solution.title} className="w-20 sm:w-24 h-30 sm:h-36 object-cover rounded-lg shadow-lg border border-slate-700 flex-shrink-0" />
                 ) : (
                   <div className="w-20 sm:w-24 h-30 sm:h-36 bg-slate-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-700">
                     <Film className="w-8 h-8 text-slate-500" />
                   </div>
                 )}
                 <div className="text-center sm:text-left flex flex-col justify-center">
-                  <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">
-                    Target Film
-                  </span>
+                  <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">Target Film</span>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-100">{solution.title}</h3>
-                  <span className="text-xs sm:text-sm text-slate-400 font-medium">
-                    Released in {solution.year}
-                  </span>
+                  <span className="text-xs sm:text-sm text-slate-400 font-medium">Released in {solution.year}</span>
                 </div>
               </div>
             )}
@@ -684,105 +562,67 @@ export default function Home() {
               <div className="grid grid-cols-3 gap-2.5 w-full">
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Score</span>
-                  <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">
-                    {animatedScore}
-                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">{animatedScore}</span>
                 </div>
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Clues Used</span>
-                  <span className="text-xl sm:text-2xl font-black text-slate-200 mt-0.5">
-                    {clueNumber}
-                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-slate-200 mt-0.5">{clueNumber}</span>
                 </div>
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">Streak</span>
-                  <span className="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">
-                    {streak}🔥
-                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">{streak}🔥</span>
                 </div>
               </div>
             )}
 
-            {hasWon && (
-              <div className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full">
-                {getRankBadge(clueNumber)}
+            {hasWon && <div className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full">{getRankBadge(currentPotentialScore)}</div>}
+
+            <button onClick={handleShare} className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none">
+              {hasCopied ? <><Check className="w-5 h-5 text-white" /><span>Copied to Clipboard!</span></> : <><Share2 className="w-5 h-5" /><span>Share Result</span></>}
+            </button>
+
+            {/* BUTONUL NOU - Vezi indiciile nearătate */}
+            <button onClick={() => setShowRemainingClues(!showRemainingClues)} className="text-xs font-medium text-slate-400 hover:text-slate-200 underline underline-offset-4 transition-colors">
+              {showRemainingClues ? "Hide remaining clues" : "Curious? View all remaining clues"}
+            </button>
+
+            {showRemainingClues && (
+              <div className="mt-2 max-h-40 overflow-y-auto text-left space-y-2 p-3 bg-slate-950/50 border border-slate-800 rounded-xl w-full">
+                {userDeck.slice(clueNumber).map((clue, idx) => (
+                  <p key={idx} className="text-xs text-slate-300">
+                    <span className="text-amber-500/80 font-bold mr-2">#{clueNumber + idx + 1}</span>
+                    {clue}
+                  </p>
+                ))}
               </div>
             )}
-
-            {!user && hasWon && (
-              <button
-                onClick={handleGoogleLogin}
-                className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-semibold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs active:scale-95 transition-all shadow-sm"
-              >
-                <LogIn className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                <span>Save streak & join Leaderboard with Google</span>
-              </button>
-            )}
-
-            <button
-              onClick={handleShare}
-              className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none"
-            >
-              {hasCopied ? (
-                <>
-                  <Check className="w-5 h-5 text-white" aria-hidden="true" />
-                  <span>Copied to Clipboard!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-5 h-5" aria-hidden="true" />
-                  <span>Share Result</span>
-                </>
-              )}
-            </button>
           </section>
         )}
 
+        {/* Collapsible Unlocked Clues History */}
         {unlockedClues.length > 1 && (
           <div className="flex flex-col border border-slate-800/90 bg-slate-900/40 rounded-xl overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-              aria-expanded={isHistoryExpanded}
-              className="min-h-[44px] w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-900/60 transition-colors"
-            >
+            <button onClick={() => setIsHistoryExpanded(!isHistoryExpanded)} className="min-h-[44px] w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-900/60 transition-colors">
               <span>Previous Unlocked Clues ({unlockedClues.length - 1})</span>
-              {isHistoryExpanded ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              )}
+              {isHistoryExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
-
             {isHistoryExpanded && (
               <div className="flex flex-col gap-2 p-3 border-t border-slate-800/80">
-                {unlockedClues
-                  .slice(0, -1)
-                  .reverse()
-                  .map((c, i) => (
-                    <div
-                      key={i}
-                      className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-lg text-xs text-slate-300 italic leading-relaxed"
-                    >
-                      "{c}"
-                    </div>
-                  ))}
+                {unlockedClues.slice(0, -1).reverse().map((c, i) => (
+                  <div key={i} className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-lg text-xs text-slate-300 italic leading-relaxed">"{c}"</div>
+                ))}
               </div>
             )}
           </div>
         )}
 
+        {/* Incorrect Guesses (Pill format) */}
         {attempts.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-              Incorrect guesses ({attempts.length})
-            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Incorrect guesses ({attempts.length})</span>
             <div className="flex flex-wrap gap-1.5">
               {attempts.map((attempt, idx) => (
-                <span
-                  key={idx}
-                  className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm"
-                >
+                <span key={idx} className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   {attempt}
                 </span>
@@ -792,29 +632,13 @@ export default function Home() {
         )}
       </div>
 
-      {/* Footer */}
       <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
         <div>© 40Clues 2026. All rights reserved.</div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/privacy"
-            className="hover:text-amber-400 transition-colors underline underline-offset-4"
-          >
-            Privacy Policy
-          </Link>
-        </div>
+        <Link href="/privacy" className="hover:text-amber-400 transition-colors underline underline-offset-4">Privacy Policy</Link>
       </footer>
 
-      <LeaderboardModal
-        isOpen={isLeaderboardOpen}
-        onClose={() => setIsLeaderboardOpen(false)}
-        gameDate={gameDate}
-      />
-
-      <HowToPlayModal
-        isOpen={isHowToPlayOpen}
-        onClose={() => setIsHowToPlayOpen(false)}
-      />
+      <LeaderboardModal isOpen={isLeaderboardOpen} onClose={() => setIsLeaderboardOpen(false)} gameDate={gameDate} />
+      <HowToPlayModal isOpen={isHowToPlayOpen} onClose={() => setIsHowToPlayOpen(false)} />
     </main>
   );
 }
