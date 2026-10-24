@@ -195,10 +195,21 @@ export default function Home() {
 
   const syncScoreToDatabase = async (cluesUsed: number, score: number, targetDate?: string) => {
     try {
+      let anonName = localStorage.getItem("40clues_anon_name");
+      if (!anonName) {
+        anonName = `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+        localStorage.setItem("40clues_anon_name", anonName);
+      }
+
       await fetch("/api/score", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ gameDate: targetDate || gameDate, cluesUsed, score }),
+        body: JSON.stringify({
+          gameDate: targetDate || gameDate,
+          cluesUsed,
+          score,
+          anonName,
+        }),
       });
     } catch (err) {
       console.error("Failed to sync score:", err);
@@ -298,7 +309,7 @@ export default function Home() {
         confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
         updateStreakOnWin();
         saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol);
-        if (user) syncScoreToDatabase(clueNumber, currentPotentialScore);
+        syncScoreToDatabase(clueNumber, score);
       } else {
         triggerErrorShake();
         const newAttempts = [selectedTitle, ...attempts];
