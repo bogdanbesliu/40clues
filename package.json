@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "generate:daily": "tsx scripts/generate-daily.ts"
+    "generate:daily": "tsx scripts/run.ts"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",
