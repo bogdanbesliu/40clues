@@ -309,7 +309,7 @@ export default function Home() {
         confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
         updateStreakOnWin();
         saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol);
-        syncScoreToDatabase(clueNumber, score);
+        syncScoreToDatabase(clueNumber, currentPotentialScore);
       } else {
         triggerErrorShake();
         const newAttempts = [selectedTitle, ...attempts];
