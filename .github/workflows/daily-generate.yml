@@ -3,6 +3,7 @@ name: Generate Daily 40Clues Game
 on:
   schedule:
     - cron: '0 0 * * *'
+      timezone: Europe/Bucharest
   workflow_dispatch:
 
 jobs:
