@@ -12,6 +12,8 @@ import {
   Calendar,
   Award,
   Crown,
+  Check,
+  User,
 } from "lucide-react";
 
 interface HowToPlayModalProps {
