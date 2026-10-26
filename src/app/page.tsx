@@ -24,6 +24,7 @@ import LeaderboardModal from "@/components/LeaderboardModal";
 import HowToPlayModal from "@/components/HowToPlayModal";
 import FeedbackModal from "@/components/FeedbackModal";
 import NextGameCountdown from "@/components/NextGameCountdown";
+import ShareModal from "@/components/ShareModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 
@@ -69,6 +70,7 @@ export default function Home() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showRemainingClues, setShowRemainingClues] = useState(false);
@@ -76,7 +78,6 @@ export default function Home() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [hasCopied, setHasCopied] = useState(false);
   const [isShakeActive, setIsShakeActive] = useState(false);
   const [isClueFading, setIsClueFading] = useState(false);
   const [animatedScore, setAnimatedScore] = useState<number>(0);
@@ -409,22 +410,6 @@ export default function Home() {
     }
   };
 
-  const handleShare = () => {
-    const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
-    const greenBlock = "🟩";
-    const blackBlock = "⬛";
-    const emojiGrid =
-      greenBlock.repeat(Math.max(1, 6 - blocksCount)) +
-      blackBlock.repeat(blocksCount - 1);
-    const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues\n🏆 ${currentPotentialScore} pts\n🔥 ${streak}-day streak\n${emojiGrid}\n\nhttps://40clues.com`;
-
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(shareText);
-      setHasCopied(true);
-      setTimeout(() => setHasCopied(false), 2500);
-    }
-  };
-
   const progressPercent = Math.min(100, Math.round((clueNumber / totalClues) * 100));
 
   return (
@@ -732,20 +717,11 @@ export default function Home() {
             )}
 
             <button
-              onClick={handleShare}
+              onClick={() => setIsShareModalOpen(true)}
               className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
-              {hasCopied ? (
-                <>
-                  <Check className="w-5 h-5 text-white" aria-hidden="true" />
-                  <span>Copied to Clipboard!</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-5 h-5" aria-hidden="true" />
-                  <span>Share Result</span>
-                </>
-              )}
+              <Share2 className="w-5 h-5" aria-hidden="true" />
+              <span>Share Result</span>
             </button>
 
             {/* Live countdown timer until next mystery movie */}
@@ -878,6 +854,19 @@ export default function Home() {
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
         userId={user?.id}
+      />
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        score={currentPotentialScore}
+        clueNumber={clueNumber}
+        totalClues={totalClues}
+        streak={streak}
+        rankBadge={getRankBadge(currentPotentialScore)}
+        movieTitle={solution?.title || "Mystery Movie"}
+        movieYear={solution?.year || ""}
+        hasWon={hasWon}
+        gameDate={gameDate}
       />
     </main>
   );
