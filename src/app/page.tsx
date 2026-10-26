@@ -23,6 +23,7 @@ import MovieSearchInput from "@/components/MovieSearchInput";
 import LeaderboardModal from "@/components/LeaderboardModal";
 import HowToPlayModal from "@/components/HowToPlayModal";
 import FeedbackModal from "@/components/FeedbackModal";
+import NextGameCountdown from "@/components/NextGameCountdown";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 
@@ -747,7 +748,10 @@ export default function Home() {
               )}
             </button>
 
-            {/* BUTONUL NOU - Vezi indiciile nearătate */}
+            {/* Live countdown timer until next mystery movie */}
+            <NextGameCountdown onRefresh={initGame} />
+
+            {/* View unrevealed clues */}
             <button
               id="toggle-remaining-clues"
               onClick={() => setShowRemainingClues(!showRemainingClues)}
