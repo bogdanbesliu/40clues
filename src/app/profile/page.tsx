@@ -217,7 +217,7 @@ export default function ProfilePage() {
 
   const unlockedCount = badges.filter((b) => b.unlocked).length;
 
-  // Sortăm insignele: cele deblocate sau cu progres ridicat primele
+  // Sort badges: unlocked or high progress first
   const sortedBadges = [...badges].sort((a, b) => {
     if (a.unlocked && !b.unlocked) return -1;
     if (!a.unlocked && b.unlocked) return 1;
@@ -342,7 +342,7 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Badges & Milestones cu Latest 4 și Progres x/y */}
+        {/* Badges & Milestones with Latest 4 and Progress x/y */}
         <section aria-labelledby="badges-heading" className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 id="badges-heading" className="text-xs uppercase tracking-wider font-bold text-slate-400 flex items-center gap-1.5">

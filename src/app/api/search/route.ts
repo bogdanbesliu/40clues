@@ -25,7 +25,7 @@ export async function GET(request: Request) {
 
     const data = await res.json();
     
-    // Păstrăm primele 6 rezultate cele mai populare
+    // Keep top 6 most popular results
     const movies = (data.results || [])
       .slice(0, 6)
       .map((m: any) => ({

@@ -45,8 +45,8 @@ export async function GET(request: Request) {
     const rawClues = (game.clues as string[]) || [];
     const deck = seededShuffle(rawClues, deckSeed);
 
-    // Securitate: trimitem doar primul indiciu și seed-ul de amestecare.
-    // Viitoarele indicii nu sunt expuse în rețea până nu sunt deblocate legitim.
+    // Security: return only the first clue and the shuffle seed.
+    // Future clues are not exposed over the network until legitimately unlocked.
     return NextResponse.json({
       gameDate: game.game_date,
       totalClues: deck.length,
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Cerere la trecerea prin Pass pentru a obține următorul indiciu pe rând
+// Request on Pass action to retrieve the next clue on demand
 export async function POST(request: Request) {
   try {
     const body = await request.json();

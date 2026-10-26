@@ -43,6 +43,7 @@ interface StoredGameProgress {
   attempts: string[];
   unlockedClues: string[];
   remainingClues?: string[];
+  unlockedLifelines?: { decade?: string; genre?: string };
   hasWon: boolean;
   hasLost: boolean;
   solution: SolutionData | null;
@@ -56,9 +57,11 @@ export default function Home() {
   const [remainingClues, setRemainingClues] = useState<string[]>([]);
   const [attempts, setAttempts] = useState<string[]>([]);
 
-  // Scor & Pass
+  // Score & Pass
   const [scorePenalty, setScorePenalty] = useState<number>(0);
   const [hasUsedFreePass, setHasUsedFreePass] = useState<boolean>(false);
+  const [unlockedLifelines, setUnlockedLifelines] = useState<{ decade?: string; genre?: string }>({});
+  const [isLifelineLoading, setIsLifelineLoading] = useState<"decade" | "genre" | null>(null);
 
   const [hasWon, setHasWon] = useState(false);
   const [hasLost, setHasLost] = useState(false);
@@ -158,6 +161,7 @@ export default function Home() {
         setAttempts(parsed.attempts || []);
         setUnlockedClues(parsed.unlockedClues || []);
         setRemainingClues(parsed.remainingClues || []);
+        setUnlockedLifelines(parsed.unlockedLifelines || {});
         setHasWon(parsed.hasWon);
         setHasLost(parsed.hasLost);
         setSolution(parsed.solution);
@@ -165,7 +169,7 @@ export default function Home() {
         return;
       }
 
-      // Generăm un deckSeed aleatoriu unic pentru acest jucător (RNG unicat)
+      // Generate a unique random deckSeed for this player (preserving RNG luck)
       const randomSeed = Math.random().toString(36).substring(2) + Date.now().toString(36);
       const res = await fetch(`/api/game?deckSeed=${randomSeed}`);
       const data = await res.json();
@@ -181,6 +185,7 @@ export default function Home() {
       setDeckSeed(data.deckSeed || randomSeed);
       setUnlockedClues([data.initialClue || "No clue available"]);
       setRemainingClues([]);
+      setUnlockedLifelines({});
       setClueNumber(1);
 
       const initialProgress: StoredGameProgress = {
@@ -192,6 +197,7 @@ export default function Home() {
         attempts: [],
         unlockedClues: [data.initialClue || "No clue available"],
         remainingClues: [],
+        unlockedLifelines: {},
         hasWon: false,
         hasLost: false,
         solution: null,
@@ -250,7 +256,8 @@ export default function Home() {
     won: boolean,
     lost: boolean,
     sol: SolutionData | null,
-    newRemainingClues?: string[]
+    newRemainingClues?: string[],
+    newLifelines?: { decade?: string; genre?: string }
   ) => {
     if (!gameDate) return;
     const progress: StoredGameProgress = {
@@ -262,6 +269,7 @@ export default function Home() {
       attempts: newAttempts,
       unlockedClues: newUnlockedClues,
       remainingClues: newRemainingClues !== undefined ? newRemainingClues : remainingClues,
+      unlockedLifelines: newLifelines !== undefined ? newLifelines : unlockedLifelines,
       hasWon: won,
       hasLost: lost,
       solution: sol,
@@ -333,6 +341,49 @@ export default function Home() {
       setMessage("Network error passing clue.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleUseLifeline = async (type: "decade" | "genre") => {
+    if (hasWon || hasLost || isLifelineLoading || unlockedLifelines[type]) return;
+    setIsLifelineLoading(type);
+    try {
+      const res = await fetch("/api/game/lifeline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, gameDate }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMessage(data.error || "Failed to unlock tactical hint.");
+        return;
+      }
+
+      const newPenalty = scorePenalty + 50;
+      const newLifelines = {
+        ...unlockedLifelines,
+        [type]: type === "decade" ? data.decade : data.genre,
+      };
+
+      setScorePenalty(newPenalty);
+      setUnlockedLifelines(newLifelines);
+      setMessage(`Tactical hint unlocked (-50 pts): ${data.hint}`);
+      saveProgress(
+        clueNumber,
+        newPenalty,
+        hasUsedFreePass,
+        attempts,
+        unlockedClues,
+        false,
+        false,
+        null,
+        remainingClues,
+        newLifelines
+      );
+    } catch {
+      setMessage("Network error unlocking tactical hint.");
+    } finally {
+      setIsLifelineLoading(null);
     }
   };
 
@@ -415,7 +466,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-6 sm:py-8 font-sans selection:bg-amber-500/30">
       {/* Header */}
-      {/* Header fără Hamburger Menu - toate butoanele vizibile pe un singur rând */}
+      {/* Header with all action buttons visible in a single row */}
       <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800/80 pb-4 mb-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
@@ -608,9 +659,61 @@ export default function Home() {
           </div>
         )}
 
-        {/* Input & Pass Button Row */}
+        {/* Tactical Lifelines & Input Row */}
         {!hasWon && !hasLost ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2.5">
+            {/* Tactical Lifelines */}
+            <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs flex-wrap">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Tactical Intel (-50 pts):
+              </span>
+              <div className="flex items-center gap-2">
+                {/* Release Decade */}
+                {unlockedLifelines.decade ? (
+                  <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 font-bold px-2.5 py-1 rounded-lg text-xs shadow-sm">
+                    📅 {unlockedLifelines.decade}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleUseLifeline("decade")}
+                    disabled={isLoading || isSubmitting || isLifelineLoading !== null}
+                    aria-label="Unlock Release Decade hint (-50 points)"
+                    title="Reveal release decade (-50 pts penalty)"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 transition-all font-medium text-xs disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    {isLifelineLoading === "decade" ? (
+                      <span className="animate-spin text-amber-400">⏳</span>
+                    ) : (
+                      <span>📅 Decade</span>
+                    )}
+                  </button>
+                )}
+
+                {/* Primary Genre */}
+                {unlockedLifelines.genre ? (
+                  <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 font-bold px-2.5 py-1 rounded-lg text-xs shadow-sm">
+                    🎭 {unlockedLifelines.genre}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleUseLifeline("genre")}
+                    disabled={isLoading || isSubmitting || isLifelineLoading !== null}
+                    aria-label="Unlock Primary Genre hint (-50 points)"
+                    title="Reveal primary genre (-50 pts penalty)"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 transition-all font-medium text-xs disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    {isLifelineLoading === "genre" ? (
+                      <span className="animate-spin text-amber-400">⏳</span>
+                    ) : (
+                      <span>🎭 Genre</span>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               <MovieSearchInput
                 disabled={isLoading || isSubmitting}

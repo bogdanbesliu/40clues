@@ -8,7 +8,7 @@ export async function GET(request: Request) {
 
   try {
     if (type === "global") {
-      // Global Leaderboards: Top 20 utilizatori înregistrați după scorul total
+      // Global Leaderboards: Top 20 registered users by total score
       const { data: globalTop, error } = await supabase
         .from("profiles")
         .select("display_name, avatar_url, total_score, games_played, current_streak")
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ leaderboard: formatted });
     }
 
-    // Daily Leaderboard: Top 20 scoruri de azi (atât logați, cât și nelogați)
+    // Daily Leaderboard: Top 20 scores for today (both authenticated and guests)
     const { data: dailyTop, error } = await supabase
       .from("daily_scores")
       .select(`

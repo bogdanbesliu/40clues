@@ -23,7 +23,7 @@ export interface ClueBadge {
       };
     }
   
-    // 2. Culise / Producție / Trivia
+    // 2. Behind the scenes / Production / Trivia
     if (
       text.toLowerCase().includes("budget") ||
       text.toLowerCase().includes("actor") ||
@@ -41,7 +41,7 @@ export interface ClueBadge {
       };
     }
   
-    // 3. Rezumat comic / Explain a plot badly
+    // 3. Comic summary / Explain a plot badly
     if (
       text.toLowerCase().includes("basically") ||
       text.toLowerCase().includes("because someone") ||
@@ -56,7 +56,7 @@ export interface ClueBadge {
       };
     }
   
-    // 4. Detalii Absurde / Trivia irelevantă
+    // 4. Absurd details / Obscure trivia
     if (
       text.toLowerCase().includes("background") ||
       text.toLowerCase().includes("parking") ||
@@ -71,7 +71,7 @@ export interface ClueBadge {
       };
     }
   
-    // 5. Categorie implicită (Plot & Story Clue - 60% din mix)
+    // 5. Default category (Plot & Story Clue - 60% of mix)
     return {
       label: "Plot & Story Clue",
       emoji: "🔍",

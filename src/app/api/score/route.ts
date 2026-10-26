@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing score fields" }, { status: 400 });
     }
 
-    // CAZUL 1: Utilizator înregistrat (logat cu Google)
+    // CASE 1: Authenticated user (signed in with Google)
     if (user) {
       const displayName =
         user.user_metadata?.full_name ||
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: scoreError.message }, { status: 400 });
       }
 
-      // Recalculăm statisticile totale pentru Global Leaderboard și Profil
+      // Recalculate total statistics for Global Leaderboard and Profile
       const { data: allScores } = await supabase
         .from("daily_scores")
         .select("score, game_date")
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       });
     }
 
-    // CAZUL 2: Utilizator neautentificat (Guest) -> salvăm în Daily Leaderboard cu username generat
+    // CASE 2: Unauthenticated user (Guest) -> save to Daily Leaderboard with generated username
     const generatedUsername =
       anonName || `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
 

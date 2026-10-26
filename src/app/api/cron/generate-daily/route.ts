@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { runDailyGenerator } from "@/../scripts/generate-daily";
 
-// Permite funcției să ruleze până la 60 secunde pe Vercel fără 504 Timeout
+// Allow function to run up to 60 seconds on Vercel without 504 Timeout
 export const maxDuration = 60;
 
 export async function GET(request: Request) {

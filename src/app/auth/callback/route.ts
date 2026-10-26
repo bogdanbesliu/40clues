@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   if (code) {
     const cookieStore = await cookies();
     
-    // Creăm răspunsul de redirecționare din timp
+    // Create redirect response upfront
     const response = NextResponse.redirect(`${origin}${next}`);
 
     const supabase = createServerClient(

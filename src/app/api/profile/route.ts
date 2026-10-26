@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
     }
 
-    // 1. Extragem toate scorurile utilizatorului din daily_scores
+    // 1. Fetch all user scores from daily_scores
     const { data: scores, error: scoresError } = await supabase
       .from("daily_scores")
       .select("game_date, score, clues_used, created_at")
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: scoresError.message }, { status: 500 });
     }
 
-    // 2. Extragem titlurile filmelor pentru istoric
+    // 2. Fetch movie titles for history
     const gameDates = (scores || []).map((s) => s.game_date);
     const gamesMap: Record<string, { title: string; year: number }> = {};
 
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
       });
     }
 
-    // 3. Calcul Statistici Carieră
+    // 3. Calculate career statistics
     const totalPlayed = scores?.length || 0;
     const totalPoints = (scores || []).reduce((acc, curr) => acc + (curr.score || 0), 0);
     const avgClues =
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
       if (c <= 5) underFiveCluesCount++;
     });
 
-    // 4. Calcul Streak curent și Max Streak
+    // 4. Calculate current streak and max streak
     const sortedDates = (scores || [])
       .map((s) => s.game_date)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());

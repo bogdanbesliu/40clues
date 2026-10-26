@@ -53,7 +53,14 @@ export default function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps)
           <div className="flex items-start gap-3">
             <Trophy className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <span className="font-bold text-slate-100">Scoring:</span> Start with <strong className="text-amber-400">1,000 points</strong>. Each wrong guess or passed clue drops your score by <strong className="text-rose-400">25 points</strong> (minimum 25 pts for a win).
+              <span className="font-bold text-slate-100">Scoring:</span> Start with <strong className="text-amber-400">1,000 points</strong>. Each wrong guess drops your score by <strong className="text-rose-400">25 points</strong>, and passing a clue drops <strong className="text-rose-400">10 points</strong> (first pass is free!). Minimum 25 pts for a win.
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <span className="text-base flex-shrink-0" aria-hidden="true">💡</span>
+            <div>
+              <span className="font-bold text-slate-100">Tactical Intel:</span> Need a hint? Unlock the <strong className="text-amber-400">Release Decade</strong> or <strong className="text-amber-400">Primary Genre</strong> for <strong className="text-rose-400">-50 points</strong> each.
             </div>
           </div>
 

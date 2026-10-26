@@ -80,7 +80,7 @@ export default function LeaderboardModal({ isOpen, onClose, gameDate }: Leaderbo
           <h2 id="leaderboard-modal-title" className="text-lg font-extrabold text-slate-100">Leaderboards</h2>
         </div>
 
-        {/* Tab-uri pentru comutare: Daily Leaderboard vs Global Leaderboards */}
+        {/* View switcher: Daily Leaderboard vs Global Leaderboards */}
         <div role="tablist" aria-label="Leaderboard views" className="flex items-center gap-2 mb-5">
           <button
             type="button"

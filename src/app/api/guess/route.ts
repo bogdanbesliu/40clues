@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       try {
         const tmdbApiKey = process.env.TMDB_API_KEY;
         if (tmdbApiKey) {
-          // 1. Încercare de căutare cu an
+          // 1. Search attempt with release year
           let res = await fetch(
             `https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(
               game.title
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
           );
           let data = await res.json();
 
-          // 2. Fallback: căutare fără an dacă titlul exact n-a returnat rezultate
+          // 2. Fallback: search without year if exact title yielded no results
           if (!data.results || data.results.length === 0) {
             res = await fetch(
               `https://api.themoviedb.org/3/search/movie?api_key=${tmdbApiKey}&query=${encodeURIComponent(

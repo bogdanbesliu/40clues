@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/api/"], // Protejează endpoint-urile private de la indexare
+      disallow: ["/api/"], // Protect private API endpoints from indexing
     },
     sitemap: "https://40clues.com/sitemap.xml",
   };
