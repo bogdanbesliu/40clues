@@ -1341,6 +1341,8 @@ export default function Home() {
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         gameDate={gameDate}
+        isLoggedIn={!!user}
+        onLogin={handleGoogleLogin}
       />
       <HowToPlayModal
         isOpen={isHowToPlayOpen}

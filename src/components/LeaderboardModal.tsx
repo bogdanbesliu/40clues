@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { X, Trophy, Loader2, User, Globe, Clock } from "lucide-react";
+import { X, Trophy, Loader2, User, Globe, Clock, Lock, LogIn } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 
 interface LeaderboardEntry {
   score: number;
@@ -18,12 +19,25 @@ interface LeaderboardModalProps {
   isOpen: boolean;
   onClose: () => void;
   gameDate: string;
+  isLoggedIn?: boolean;
+  onLogin?: () => void;
 }
 
-export default function LeaderboardModal({ isOpen, onClose, gameDate }: LeaderboardModalProps) {
+export default function LeaderboardModal({
+  isOpen,
+  onClose,
+  gameDate,
+  isLoggedIn = false,
+  onLogin,
+}: LeaderboardModalProps) {
   const [activeTab, setActiveTab] = useState<"daily" | "global">("daily");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,26 +50,52 @@ export default function LeaderboardModal({ isOpen, onClose, gameDate }: Leaderbo
     };
     window.addEventListener("keydown", handleKeyDown);
 
-    setLoading(true);
-    const endpoint =
-      activeTab === "daily"
-        ? `/api/leaderboard?date=${gameDate}&type=daily`
-        : `/api/leaderboard?type=global`;
+    // If viewing Global tab without being signed in, do not fetch
+    if (activeTab === "global" && !isLoggedIn) {
+      setLoading(false);
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
 
-    fetch(endpoint)
-      .then((res) => res.json())
-      .then((data) => {
+    setLoading(true);
+
+    const loadEntries = async () => {
+      try {
+        const headers: Record<string, string> = {};
+        if (activeTab === "global") {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            headers["Authorization"] = `Bearer ${session.access_token}`;
+          }
+        }
+
+        const endpoint =
+          activeTab === "daily"
+            ? `/api/leaderboard?date=${gameDate}&type=daily`
+            : `/api/leaderboard?type=global`;
+
+        const res = await fetch(endpoint, { headers });
+        const data = await res.json();
         const topEntries = (data.leaderboard || []).slice(0, 20);
         setEntries(topEntries);
-      })
-      .catch(() => setEntries([]))
-      .finally(() => setLoading(false));
+      } catch {
+        setEntries([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEntries();
 
     return () => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, gameDate, activeTab, onClose]);
+  }, [isOpen, gameDate, activeTab, isLoggedIn, onClose, supabase]);
 
   if (!isOpen) return null;
 
@@ -112,10 +152,45 @@ export default function LeaderboardModal({ isOpen, onClose, gameDate }: Leaderbo
           >
             <Globe className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Global Leaderboards</span>
+            {!isLoggedIn && (
+              <Lock className="w-3 h-3 text-amber-400 ml-0.5" aria-hidden="true" />
+            )}
           </button>
         </div>
 
-        {loading ? (
+        {activeTab === "global" && !isLoggedIn ? (
+          <div
+            id="leaderboard-content"
+            role="tabpanel"
+            aria-labelledby="tab-global"
+            className="flex flex-col items-center justify-center text-center py-8 px-4 bg-slate-950/60 border border-amber-500/30 rounded-2xl gap-4 my-auto animate-in fade-in duration-200"
+          >
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
+              <Lock className="w-6 h-6" aria-hidden="true" />
+            </div>
+            <div className="max-w-xs">
+              <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide">
+                Members Only Feature
+              </h3>
+              <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                Global All-Time Leaderboards track cumulative scores and career streaks across all daily mysteries. Sign in to view rankings and claim your spot!
+              </p>
+            </div>
+            {onLogin && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onLogin();
+                }}
+                className="w-full max-w-xs min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              >
+                <LogIn className="w-4 h-4" aria-hidden="true" />
+                <span>Sign in with Google</span>
+              </button>
+            )}
+          </div>
+        ) : loading ? (
           <div className="flex items-center justify-center py-12 gap-3 text-slate-300">
             <Loader2 className="w-6 h-6 animate-spin text-amber-400" aria-hidden="true" />
             <span className="font-medium text-xs">Loading top 20 rankings...</span>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { getAuthenticatedUser } from "@/lib/serverAuth";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,7 +9,19 @@ export async function GET(request: Request) {
 
   try {
     if (type === "global") {
-      // Global Leaderboards: Top 20 registered users by total score
+      const user = await getAuthenticatedUser(request);
+      if (!user) {
+        return NextResponse.json(
+          {
+            error: "Sign in with Google is required to access Global Leaderboards.",
+            isGuest: true,
+            leaderboard: [],
+          },
+          { status: 401 }
+        );
+      }
+
+      // Global Leaderboards: Top 20 registered users by total score (All-Time Hall of Fame)
       const { data: globalTop, error } = await supabase
         .from("profiles")
         .select("display_name, avatar_url, total_score, games_played, current_streak")
