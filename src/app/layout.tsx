@@ -1,10 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
+
+export const viewport: Viewport = {
+  themeColor: "#020617",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://40clues.com"),
@@ -21,6 +28,11 @@ export const metadata: Metadata = {
     "40clues",
   ],
   authors: [{ name: "40Clues" }],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "40Clues",
+  },
   openGraph: {
     title: "40clues.com (Guess the movie in 40 clues!)",
     description:
@@ -37,8 +49,14 @@ export const metadata: Metadata = {
       "40 clues. One movie. Can you deduce today's secret film before running out of clues?",
   },
   icons: {
-    icon: "/icon.svg",
-    apple: "/apple-touch-icon.png",
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
