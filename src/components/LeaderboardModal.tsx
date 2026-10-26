@@ -63,60 +63,81 @@ export default function LeaderboardModal({ isOpen, onClose, gameDate }: Leaderbo
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="leaderboard-modal-title"
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
     >
       <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
         <button
           onClick={onClose}
           aria-label="Close leaderboard modal"
-          className="absolute top-4 right-4 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           <X className="w-5 h-5" aria-hidden="true" />
         </button>
 
         <div className="flex items-center gap-2 mb-4">
-          <Trophy className="w-5 h-5 text-amber-400" />
-          <h2 className="text-lg font-extrabold text-slate-100">Leaderboards</h2>
+          <Trophy className="w-5 h-5 text-amber-400" aria-hidden="true" />
+          <h2 id="leaderboard-modal-title" className="text-lg font-extrabold text-slate-100">Leaderboards</h2>
         </div>
 
         {/* Tab-uri pentru comutare: Daily Leaderboard vs Global Leaderboards */}
-        <div className="flex items-center gap-2 mb-5">
+        <div role="tablist" aria-label="Leaderboard views" className="flex items-center gap-2 mb-5">
           <button
+            type="button"
+            role="tab"
+            id="tab-daily"
+            aria-selected={activeTab === "daily"}
+            aria-controls="leaderboard-content"
             onClick={() => setActiveTab("daily")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "daily"
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${activeTab === "daily"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 bg-slate-950/50 border border-slate-800"
+                : "text-slate-300 hover:text-slate-100 bg-slate-950/50 border border-slate-800"
               }`}
           >
-            <Clock className="w-3.5 h-3.5" />
+            <Clock className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Daily Leaderboard</span>
           </button>
 
           <button
+            type="button"
+            role="tab"
+            id="tab-global"
+            aria-selected={activeTab === "global"}
+            aria-controls="leaderboard-content"
             onClick={() => setActiveTab("global")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === "global"
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${activeTab === "global"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm"
-                : "text-slate-400 hover:text-slate-200 bg-slate-950/50 border border-slate-800"
+                : "text-slate-300 hover:text-slate-100 bg-slate-950/50 border border-slate-800"
               }`}
           >
-            <Globe className="w-3.5 h-3.5" />
+            <Globe className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Global Leaderboards</span>
           </button>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12 gap-3 text-slate-300">
-            <Loader2 className="w-6 h-6 animate-spin text-amber-400" />
+            <Loader2 className="w-6 h-6 animate-spin text-amber-400" aria-hidden="true" />
             <span className="font-medium text-xs">Loading top 20 rankings...</span>
           </div>
         ) : entries.length === 0 ? (
-          <div className="text-center py-12 text-slate-400 text-xs px-4">
+          <div
+            id="leaderboard-content"
+            role="tabpanel"
+            aria-labelledby={activeTab === "daily" ? "tab-daily" : "tab-global"}
+            className="text-center py-12 text-slate-300 text-xs px-4"
+          >
             {activeTab === "daily"
               ? "No scores registered yet for today. Solve today's movie to claim #1!"
               : "No registered user scores recorded yet. Sign in with Google to join Global Leaderboards!"}
           </div>
         ) : (
-          <div className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1">
+          <div
+            id="leaderboard-content"
+            role="tabpanel"
+            aria-labelledby={activeTab === "daily" ? "tab-daily" : "tab-global"}
+            className="flex flex-col gap-2 overflow-y-auto pr-1 flex-1"
+          >
             {entries.map((entry, index) => {
               const displayName =
                 entry.profiles?.display_name || entry.anon_name || "Cinephile_Guest";
@@ -141,11 +162,11 @@ export default function LeaderboardModal({ isOpen, onClose, gameDate }: Leaderbo
                     {entry.profiles?.avatar_url ? (
                       <img
                         src={entry.profiles.avatar_url}
-                        alt=""
+                        alt={`${displayName}'s avatar`}
                         className="w-7 h-7 rounded-full object-cover border border-amber-400/60 flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-700">
+                      <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-700" aria-hidden="true">
                         <User className="w-3.5 h-3.5 text-slate-400" />
                       </div>
                     )}
@@ -156,7 +177,7 @@ export default function LeaderboardModal({ isOpen, onClose, gameDate }: Leaderbo
                           {displayName}
                         </span>
                         {!isRegistered && activeTab === "daily" && (
-                          <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold">
+                          <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200 font-bold">
                             Guest
                           </span>
                         )}
@@ -173,7 +194,7 @@ export default function LeaderboardModal({ isOpen, onClose, gameDate }: Leaderbo
                   </div>
 
                   <div className="flex items-center gap-2.5 text-right flex-shrink-0">
-                    <span className="text-[11px] text-slate-400 font-medium">
+                    <span className="text-[11px] text-slate-300 font-medium">
                       {activeTab === "daily"
                         ? `${entry.clues_used}/40 clues`
                         : `${entry.clues_used} ${entry.clues_used === 1 ? "game" : "games"}`}

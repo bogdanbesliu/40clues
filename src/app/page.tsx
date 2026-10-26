@@ -414,13 +414,13 @@ export default function Home() {
 
           <button
             onClick={() => setIsHowToPlayOpen(true)}
-            className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
+            className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             title="How to Play"
             aria-label="How to Play"
           >
-            <HelpCircle className="w-4 h-4" />
+            <HelpCircle className="w-4 h-4" aria-hidden="true" />
             {streak === 0 && unlockedClues.length <= 1 && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="absolute -top-1 -right-1 flex h-3 w-3" aria-hidden="true">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
               </span>
@@ -429,28 +429,30 @@ export default function Home() {
 
           <button
             onClick={() => setIsLeaderboardOpen(true)}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             title="Leaderboards"
             aria-label="Leaderboards"
           >
-            <Trophy className="w-4 h-4" />
+            <Trophy className="w-4 h-4" aria-hidden="true" />
           </button>
 
           {user ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
                 href="/profile"
-                className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full sm:rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group"
+                className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full sm:rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 title="My Profile"
+                aria-label={`My Profile (${user.user_metadata?.full_name || user.email || "User"})`}
               >
                 {user.user_metadata?.avatar_url ? (
                   <img
                     src={user.user_metadata.avatar_url}
-                    alt="Profile"
+                    alt=""
+                    aria-hidden="true"
                     className="w-7 h-7 sm:w-6 sm:h-6 rounded-full border border-amber-400/80 object-cover"
                   />
                 ) : (
-                  <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
+                  <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs" aria-hidden="true">
                     {(user.email || "U").charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -460,19 +462,19 @@ export default function Home() {
               </Link>
               <button
                 onClick={handleSignOut}
-                className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-400 active:scale-95 rounded-full sm:rounded-lg bg-slate-900 sm:bg-transparent border border-slate-700/80 sm:border-0 transition-all p-1.5 hover:bg-slate-900"
+                className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-400 active:scale-95 rounded-full sm:rounded-lg bg-slate-900 sm:bg-transparent border border-slate-700/80 sm:border-0 transition-all p-1.5 hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                 title="Sign Out"
                 aria-label="Sign Out"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           ) : (
             <button
               onClick={handleGoogleLogin}
-              className="min-h-[40px] flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-full sm:rounded-xl transition-all shadow-sm active:scale-95"
+              className="min-h-[40px] flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-full sm:rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
-              <User className="w-4 h-4 text-amber-400" />
+              <User className="w-4 h-4 text-amber-400" aria-hidden="true" />
               <span>Sign In</span>
             </button>
           )}
@@ -481,13 +483,20 @@ export default function Home() {
 
       {/* Visual Clue Progress Bar */}
       <div className="max-w-xl w-full mb-5">
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1.5">
+        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 mb-1.5">
           <span>
             Clue {clueNumber} of {totalClues}
           </span>
           <span className="text-amber-400">{currentPotentialScore} pts left</span>
         </div>
-        <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/80">
+        <div
+          role="progressbar"
+          aria-valuenow={clueNumber}
+          aria-valuemin={1}
+          aria-valuemax={totalClues}
+          aria-label="Clue progression"
+          className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/80"
+        >
           <div
             className={`h-full transition-all duration-500 ease-out ${clueNumber <= 10
               ? "bg-gradient-to-r from-emerald-500 to-amber-400"
@@ -515,11 +524,17 @@ export default function Home() {
             <div className="h-3 bg-slate-800/60 rounded w-24" />
           </div>
         ) : (
-          <section className="relative overflow-hidden bg-slate-900/95 border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur min-h-[160px] flex flex-col justify-between transition-all">
+          <section
+            aria-labelledby="active-clue-heading"
+            className="relative overflow-hidden bg-slate-900/95 border border-slate-800/90 hover:border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-[0_10px_35px_rgba(0,0,0,0.6)] backdrop-blur min-h-[160px] flex flex-col justify-between transition-all"
+          >
+            <h2 id="active-clue-heading" className="sr-only">
+              Current Clue #{clueNumber}
+            </h2>
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="flex items-center gap-1.5 text-amber-400 font-bold tracking-wide text-xs">
-                  <Sparkles className="w-4 h-4" /> Clue #{clueNumber}
+                  <Sparkles className="w-4 h-4" aria-hidden="true" /> Clue #{clueNumber}
                 </span>
                 {unlockedClues.length > 0 &&
                   (() => {
@@ -531,7 +546,7 @@ export default function Home() {
                       <span
                         className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${badge.colorClass}`}
                       >
-                        <span>{badge.emoji}</span>
+                        <span aria-hidden="true">{badge.emoji}</span>
                         <span>{badge.label}</span>
                       </span>
                     );
@@ -548,9 +563,9 @@ export default function Home() {
             >
               "{unlockedClues[unlockedClues.length - 1]}"
             </p>
-            <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
+            <div className="mt-3 text-[11px] text-slate-300 flex items-center justify-between">
               <span>{attempts.length} attempts</span>
-              <span className="text-amber-500/80">40 total clues</span>
+              <span className="text-amber-400 font-semibold">40 total clues</span>
             </div>
           </section>
         )}
@@ -584,9 +599,19 @@ export default function Home() {
                 type="button"
                 onClick={handleSkipClue}
                 disabled={isLoading || isSubmitting || clueNumber >= totalClues}
-                className="min-h-[48px] px-3.5 bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700/80 rounded-xl text-slate-300 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 disabled:opacity-40"
+                aria-label={
+                  hasUsedFreePass
+                    ? "Pass clue, deduct 10 points"
+                    : "Use Free Pass to skip clue without penalty"
+                }
+                title={
+                  hasUsedFreePass
+                    ? "Pass clue (-10 pts)"
+                    : "Free Pass (0 pts deducted)"
+                }
+                className="min-h-[48px] px-3.5 bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700/80 rounded-xl text-slate-200 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
-                <FastForward className="w-4 h-4" />
+                <FastForward className="w-4 h-4" aria-hidden="true" />
                 <span className="hidden sm:inline">
                   {hasUsedFreePass ? "Pass (-10)" : "Free Pass"}
                 </span>
@@ -617,7 +642,7 @@ export default function Home() {
                   />
                 ) : (
                   <div className="w-20 sm:w-24 h-30 sm:h-36 bg-slate-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-700">
-                    <Film className="w-8 h-8 text-slate-500" />
+                    <Film className="w-8 h-8 text-slate-400" aria-hidden="true" />
                   </div>
                 )}
                 <div className="text-center sm:text-left flex flex-col justify-center">
@@ -671,16 +696,16 @@ export default function Home() {
 
             <button
               onClick={handleShare}
-              className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none"
+              className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               {hasCopied ? (
                 <>
-                  <Check className="w-5 h-5 text-white" />
+                  <Check className="w-5 h-5 text-white" aria-hidden="true" />
                   <span>Copied to Clipboard!</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="w-5 h-5" />
+                  <Share2 className="w-5 h-5" aria-hidden="true" />
                   <span>Share Result</span>
                 </>
               )}
@@ -688,8 +713,11 @@ export default function Home() {
 
             {/* BUTONUL NOU - Vezi indiciile nearătate */}
             <button
+              id="toggle-remaining-clues"
               onClick={() => setShowRemainingClues(!showRemainingClues)}
-              className="text-xs font-medium text-slate-400 hover:text-slate-200 underline underline-offset-4 transition-colors"
+              aria-expanded={showRemainingClues}
+              aria-controls="remaining-clues-list"
+              className="text-xs font-medium text-slate-300 hover:text-slate-100 underline underline-offset-4 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
             >
               {showRemainingClues
                 ? "Hide remaining clues"
@@ -697,10 +725,15 @@ export default function Home() {
             </button>
 
             {showRemainingClues && (
-              <div className="mt-2 max-h-40 overflow-y-auto text-left space-y-2 p-3 bg-slate-950/50 border border-slate-800 rounded-xl w-full">
+              <div
+                id="remaining-clues-list"
+                role="region"
+                aria-labelledby="toggle-remaining-clues"
+                className="mt-2 max-h-40 overflow-y-auto text-left space-y-2 p-3 bg-slate-950/50 border border-slate-800 rounded-xl w-full"
+              >
                 {userDeck.slice(clueNumber).map((clue, idx) => (
                   <p key={idx} className="text-xs text-slate-300">
-                    <span className="text-amber-500/80 font-bold mr-2">
+                    <span className="text-amber-400 font-bold mr-2">
                       #{clueNumber + idx + 1}
                     </span>
                     {clue}
@@ -715,25 +748,33 @@ export default function Home() {
         {unlockedClues.length > 1 && (
           <div className="flex flex-col border border-slate-800/90 bg-slate-900/40 rounded-xl overflow-hidden">
             <button
+              id="toggle-previous-clues"
               onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
-              className="min-h-[44px] w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-900/60 transition-colors"
+              aria-expanded={isHistoryExpanded}
+              aria-controls="previous-clues-list"
+              className="min-h-[44px] w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-200 hover:text-slate-100 hover:bg-slate-900/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <span>Previous Unlocked Clues ({unlockedClues.length - 1})</span>
               {isHistoryExpanded ? (
-                <ChevronUp className="w-4 h-4" />
+                <ChevronUp className="w-4 h-4" aria-hidden="true" />
               ) : (
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-4 h-4" aria-hidden="true" />
               )}
             </button>
             {isHistoryExpanded && (
-              <div className="flex flex-col gap-2 p-3 border-t border-slate-800/80">
+              <div
+                id="previous-clues-list"
+                role="region"
+                aria-labelledby="toggle-previous-clues"
+                className="flex flex-col gap-2 p-3 border-t border-slate-800/80"
+              >
                 {unlockedClues
                   .slice(0, -1)
                   .reverse()
                   .map((c, i) => (
                     <div
                       key={i}
-                      className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-lg text-xs text-slate-300 italic leading-relaxed"
+                      className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-lg text-xs text-slate-200 italic leading-relaxed"
                     >
                       "{c}"
                     </div>
@@ -755,7 +796,7 @@ export default function Home() {
                   key={idx}
                   className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" aria-hidden="true" />
                   {attempt}
                 </span>
               ))}
@@ -765,18 +806,18 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
+      <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
         <div>© 40Clues 2026. All rights reserved.</div>
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsFeedbackOpen(true)}
-            className="hover:text-amber-400 transition-colors underline underline-offset-4"
+            className="hover:text-amber-400 transition-colors underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
             Give Feedback
           </button>
           <Link
             href="/privacy"
-            className="hover:text-amber-400 transition-colors underline underline-offset-4"
+            className="hover:text-amber-400 transition-colors underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
             Privacy Policy
           </Link>

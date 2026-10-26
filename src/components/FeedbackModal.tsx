@@ -53,45 +53,60 @@ export default function FeedbackModal({ isOpen, onClose, userId }: FeedbackModal
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="feedback-modal-title"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in"
+        >
             <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-100 transition-colors"
+                    aria-label="Close feedback modal"
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-100 transition-colors p-1.5 rounded-lg hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
-                    <X className="w-5 h-5" />
+                    <X className="w-5 h-5" aria-hidden="true" />
                 </button>
 
                 <div className="flex items-center gap-2 mb-4">
-                    <MessageSquare className="w-5 h-5 text-amber-400" />
-                    <h2 className="text-lg font-bold text-slate-100">Send Feedback</h2>
+                    <MessageSquare className="w-5 h-5 text-amber-400" aria-hidden="true" />
+                    <h2 id="feedback-modal-title" className="text-lg font-bold text-slate-100">Send Feedback</h2>
                 </div>
 
                 {status === "success" ? (
                     <div className="flex flex-col items-center justify-center py-8 text-emerald-400 gap-3">
-                        <CheckCircle2 className="w-12 h-12" />
+                        <CheckCircle2 className="w-12 h-12" aria-hidden="true" />
                         <p className="font-medium text-slate-200">Thank you! Message sent.</p>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                        <p className="text-xs text-slate-400 leading-relaxed">
+                        <p className="text-xs text-slate-300 leading-relaxed">
                             Found a bug or have a suggestion? Let us know! Your message goes directly to the developer.
                         </p>
 
-                        <textarea
-                            value={message}
-                            onChange={(e) => {
-                                setMessage(e.target.value);
-                                if (status === "error") setStatus("idle");
-                            }}
-                            placeholder="Type your message here..."
-                            className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500/50 min-h-[120px] resize-none"
-                            maxLength={1000}
-                        />
+                        <div>
+                            <label htmlFor="feedback-message" className="sr-only">
+                                Your message or feedback
+                            </label>
+                            <textarea
+                                id="feedback-message"
+                                value={message}
+                                onChange={(e) => {
+                                    setMessage(e.target.value);
+                                    if (status === "error") setStatus("idle");
+                                }}
+                                placeholder="Type your message here..."
+                                className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-500/70 min-h-[120px] resize-none"
+                                maxLength={1000}
+                            />
+                        </div>
 
                         {status === "error" && (
-                            <div className="flex items-center gap-2 text-rose-400 text-xs bg-rose-950/50 p-2.5 rounded-lg border border-rose-900/50">
-                                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                            <div
+                                role="alert"
+                                className="flex items-center gap-2 text-rose-300 text-xs bg-rose-950/70 p-2.5 rounded-lg border border-rose-800"
+                            >
+                                <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" aria-hidden="true" />
                                 <span>{errorMessage}</span>
                             </div>
                         )}
@@ -99,11 +114,11 @@ export default function FeedbackModal({ isOpen, onClose, userId }: FeedbackModal
                         <button
                             type="submit"
                             disabled={status === "submitting" || !message.trim()}
-                            className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
+                            className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
                         >
                             {status === "submitting" ? (
                                 <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
                                     <span>Sending...</span>
                                 </>
                             ) : (

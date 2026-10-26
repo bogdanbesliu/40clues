@@ -148,8 +148,8 @@ export default function MovieSearchInput({
           {isLoading ? (
             <Loader2 className="w-5 h-5 animate-spin text-amber-400" aria-hidden="true" />
           ) : query.length >= 2 ? (
-            <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-semibold bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700">
-              <CornerDownLeft className="w-3 h-3" /> Enter
+            <span className="hidden sm:flex items-center gap-0.5 text-[10px] font-semibold bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700">
+              <CornerDownLeft className="w-3 h-3" aria-hidden="true" /> Enter
             </span>
           ) : null}
         </div>
@@ -200,7 +200,13 @@ export default function MovieSearchInput({
                     {movie.title}
                   </span>
                   {movie.year && (
-                    <span className="text-xs text-slate-400 font-medium">{movie.year}</span>
+                    <span
+                      className={`text-xs font-medium ${
+                        isSelected ? "text-amber-300" : "text-slate-400"
+                      }`}
+                    >
+                      {movie.year}
+                    </span>
                   )}
                 </div>
               </li>

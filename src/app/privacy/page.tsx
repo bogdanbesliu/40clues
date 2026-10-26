@@ -15,9 +15,9 @@ export default function PrivacyPage() {
         <div className="flex items-center justify-between border-b border-slate-800 pb-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-amber-400 transition-colors"
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             <span>Back to Game</span>
           </Link>
           <span className="text-xs uppercase tracking-widest text-amber-400 font-bold">
@@ -29,7 +29,7 @@ export default function PrivacyPage() {
         <section className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-xl">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-              <ShieldCheck className="w-6 h-6" />
+              <ShieldCheck className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-100">
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
         {/* 1. Data We Collect */}
         <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 sm:p-6 space-y-3">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-            <Database className="w-4 h-4" />
+            <Database className="w-4 h-4" aria-hidden="true" />
             <h2>1. Information We Collect</h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
         {/* 2. Cookies & Local Storage */}
         <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 sm:p-6 space-y-3">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-            <Cookie className="w-4 h-4" />
+            <Cookie className="w-4 h-4" aria-hidden="true" />
             <h2>2. Cookies &amp; Local Storage</h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
@@ -105,7 +105,7 @@ export default function PrivacyPage() {
         {/* 3. Performance Monitoring & Analytics */}
         <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 sm:p-6 space-y-3">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-            <Activity className="w-4 h-4" />
+            <Activity className="w-4 h-4" aria-hidden="true" />
             <h2>3. Anonymous Performance Monitoring</h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
@@ -120,7 +120,7 @@ export default function PrivacyPage() {
         {/* 4. Data Deletion & Contact */}
         <section className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 sm:p-6 space-y-3">
           <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-            <Mail className="w-4 h-4" />
+            <Mail className="w-4 h-4" aria-hidden="true" />
             <h2>4. Data Deletion &amp; Contact</h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
@@ -133,12 +133,12 @@ export default function PrivacyPage() {
       </div>
 
       {/* Footer */}
-      <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
+      <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
         <div>© 40Clues 2026. All rights reserved.</div>
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="hover:text-amber-400 transition-colors underline underline-offset-4"
+            className="hover:text-amber-400 transition-colors underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
             Play 40Clues
           </Link>

@@ -234,18 +234,18 @@ export default function ProfilePage() {
         <header className="flex items-center justify-between border-b border-slate-800/80 pb-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-amber-400 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             <span>Play Daily Game</span>
           </Link>
 
           <button
             type="button"
             onClick={handleSignOut}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-rose-400 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-rose-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Sign Out</span>
           </button>
         </header>
@@ -256,11 +256,12 @@ export default function ProfilePage() {
             {user.avatar ? (
               <img
                 src={user.avatar}
-                alt={user.name}
+                alt=""
+                aria-hidden="true"
                 className="w-13 h-13 rounded-full border-2 border-amber-400/80 object-cover"
               />
             ) : (
-              <div className="w-13 h-13 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-lg">
+              <div className="w-13 h-13 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-lg" aria-hidden="true">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -268,7 +269,7 @@ export default function ProfilePage() {
               <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
                 <span>{user.name}</span>
                 {stats.currentStreak >= 7 && (
-                  <span className="text-[10px] bg-orange-950/80 text-orange-400 border border-orange-800 px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-[10px] bg-orange-950/80 text-orange-300 border border-orange-800 px-2 py-0.5 rounded-full font-bold">
                     PRO
                   </span>
                 )}
@@ -278,7 +279,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="flex items-center gap-1.5 bg-orange-950/70 border border-orange-800/80 px-3 py-1.5 rounded-full">
-            <Flame className="w-4 h-4 text-orange-400 fill-orange-400" />
+            <Flame className="w-4 h-4 text-orange-400 fill-orange-400" aria-hidden="true" />
             <span className="text-sm font-black text-orange-300">{stats.currentStreak}🔥</span>
           </div>
         </div>
@@ -311,7 +312,7 @@ export default function ProfilePage() {
         {/* Clue Guess Distribution */}
         <section aria-labelledby="guess-distribution-heading" className="bg-slate-900/90 border border-slate-800 p-5 rounded-2xl">
           <h2 id="guess-distribution-heading" className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-4 flex items-center gap-1.5">
-            <Target className="w-4 h-4 text-amber-400" />
+            <Target className="w-4 h-4 text-amber-400" aria-hidden="true" />
             <span>Guess Distribution</span>
           </h2>
 
@@ -345,21 +346,24 @@ export default function ProfilePage() {
         <section aria-labelledby="badges-heading" className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h2 id="badges-heading" className="text-xs uppercase tracking-wider font-bold text-slate-400 flex items-center gap-1.5">
-              <Award className="w-4 h-4 text-amber-400" />
+              <Award className="w-4 h-4 text-amber-400" aria-hidden="true" />
               <span>Badges & Milestones ({unlockedCount}/{badges.length})</span>
             </h2>
 
             <button
               type="button"
+              id="badges-toggle"
+              aria-expanded={showAllBadges}
+              aria-controls="badges-grid"
               onClick={() => setShowAllBadges(!showAllBadges)}
-              className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors"
+              className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
             >
               <span>{showAllBadges ? "Show less" : `See all (${badges.length})`}</span>
-              {showAllBadges ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {showAllBadges ? <ChevronUp className="w-3.5 h-3.5" aria-hidden="true" /> : <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />}
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div id="badges-grid" className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {visibleBadges.map((b) => {
               const progressPct = Math.min(100, Math.round((b.current / b.target) * 100));
               return (
@@ -368,25 +372,29 @@ export default function ProfilePage() {
                   className={`p-3.5 rounded-xl border flex flex-col justify-between transition-all ${
                     b.unlocked
                       ? "bg-slate-900/90 border-amber-500/40 text-slate-100 shadow-sm"
-                      : "bg-slate-950/40 border-slate-800/60 opacity-60"
+                      : "bg-slate-950/60 border-slate-800 text-slate-200"
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="text-2xl flex-shrink-0">{b.icon}</div>
+                    <div className={`text-2xl flex-shrink-0 ${b.unlocked ? "" : "grayscale opacity-60"}`} aria-hidden="true">
+                      {b.icon}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <h3 className="text-xs font-bold text-slate-100 truncate">{b.title}</h3>
                         {b.unlocked ? (
-                          <span className="text-[10px] bg-emerald-950/80 border border-emerald-800 text-emerald-400 font-bold px-1.5 py-0.2 rounded">
+                          <span className="text-[10px] bg-emerald-950/80 border border-emerald-800 text-emerald-300 font-bold px-1.5 py-0.2 rounded">
                             Unlocked
                           </span>
                         ) : (
-                          <span className="text-[10px] text-slate-400 font-mono font-semibold">
+                          <span className="text-[10px] text-slate-300 font-mono font-semibold">
                             {b.current}/{b.target}
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{b.desc}</p>
+                      <p className={`text-[10px] mt-0.5 leading-snug ${b.unlocked ? "text-slate-300" : "text-slate-400"}`}>
+                        {b.desc}
+                      </p>
                     </div>
                   </div>
 
