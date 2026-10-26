@@ -25,7 +25,6 @@ import HowToPlayModal from "@/components/HowToPlayModal";
 import FeedbackModal from "@/components/FeedbackModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
-import { shuffleArray } from "@/lib/utils";
 
 interface SolutionData {
   title: string;
@@ -35,12 +34,13 @@ interface SolutionData {
 
 interface StoredGameProgress {
   gameDate: string;
+  deckSeed: string;
   clueNumber: number;
   scorePenalty: number;
   hasUsedFreePass: boolean;
   attempts: string[];
-  userDeck: string[];
   unlockedClues: string[];
+  remainingClues?: string[];
   hasWon: boolean;
   hasLost: boolean;
   solution: SolutionData | null;
@@ -49,8 +49,9 @@ interface StoredGameProgress {
 export default function Home() {
   const [clueNumber, setClueNumber] = useState<number>(1);
   const [totalClues, setTotalClues] = useState<number>(40);
-  const [userDeck, setUserDeck] = useState<string[]>([]);
+  const [deckSeed, setDeckSeed] = useState<string>("");
   const [unlockedClues, setUnlockedClues] = useState<string[]>([]);
+  const [remainingClues, setRemainingClues] = useState<string[]>([]);
   const [attempts, setAttempts] = useState<string[]>([]);
 
   // Scor & Pass
@@ -140,7 +141,31 @@ export default function Home() {
   const initGame = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/game");
+      const today = new Date().toISOString().split("T")[0];
+      const savedStreak = parseInt(localStorage.getItem("40clues_streak") || "0", 10);
+      setStreak(savedStreak);
+
+      const savedLocal = localStorage.getItem(`40clues_progress_${today}`);
+      if (savedLocal) {
+        const parsed: StoredGameProgress = JSON.parse(savedLocal);
+        setGameDate(parsed.gameDate || today);
+        setDeckSeed(parsed.deckSeed || "");
+        setClueNumber(parsed.clueNumber);
+        setScorePenalty(parsed.scorePenalty || 0);
+        setHasUsedFreePass(parsed.hasUsedFreePass || false);
+        setAttempts(parsed.attempts || []);
+        setUnlockedClues(parsed.unlockedClues || []);
+        setRemainingClues(parsed.remainingClues || []);
+        setHasWon(parsed.hasWon);
+        setHasLost(parsed.hasLost);
+        setSolution(parsed.solution);
+        setIsLoading(false);
+        return;
+      }
+
+      // Generăm un deckSeed aleatoriu unic pentru acest jucător (RNG unicat)
+      const randomSeed = Math.random().toString(36).substring(2) + Date.now().toString(36);
+      const res = await fetch(`/api/game?deckSeed=${randomSeed}`);
       const data = await res.json();
       if (!res.ok) {
         setMessage("Could not load today's game. Check connection.");
@@ -148,46 +173,28 @@ export default function Home() {
         return;
       }
 
-      const today = data.gameDate;
-      setGameDate(today);
-      setTotalClues(data.totalClues);
+      const activeToday = data.gameDate || today;
+      setGameDate(activeToday);
+      setTotalClues(data.totalClues || 40);
+      setDeckSeed(data.deckSeed || randomSeed);
+      setUnlockedClues([data.initialClue || "No clue available"]);
+      setRemainingClues([]);
+      setClueNumber(1);
 
-      const savedStreak = parseInt(localStorage.getItem("40clues_streak") || "0", 10);
-      setStreak(savedStreak);
-
-      const savedLocal = localStorage.getItem(`40clues_progress_${today}`);
-      if (savedLocal) {
-        const parsed: StoredGameProgress = JSON.parse(savedLocal);
-        setClueNumber(parsed.clueNumber);
-        setScorePenalty(parsed.scorePenalty || 0);
-        setHasUsedFreePass(parsed.hasUsedFreePass || false);
-        setAttempts(parsed.attempts || []);
-        setUserDeck(parsed.userDeck || []);
-        setUnlockedClues(parsed.unlockedClues || []);
-        setHasWon(parsed.hasWon);
-        setHasLost(parsed.hasLost);
-        setSolution(parsed.solution);
-      } else {
-        const rawClues: string[] = (data.allClues as string[]) || [];
-        const deck: string[] = shuffleArray(rawClues);
-        setUserDeck(deck);
-        setUnlockedClues([deck[0] || "No clue available"]);
-        setClueNumber(1);
-
-        const initialProgress: StoredGameProgress = {
-          gameDate: today,
-          clueNumber: 1,
-          scorePenalty: 0,
-          hasUsedFreePass: false,
-          attempts: [],
-          userDeck: deck,
-          unlockedClues: [deck[0] || "No clue available"],
-          hasWon: false,
-          hasLost: false,
-          solution: null,
-        };
-        localStorage.setItem(`40clues_progress_${today}`, JSON.stringify(initialProgress));
-      }
+      const initialProgress: StoredGameProgress = {
+        gameDate: activeToday,
+        deckSeed: data.deckSeed || randomSeed,
+        clueNumber: 1,
+        scorePenalty: 0,
+        hasUsedFreePass: false,
+        attempts: [],
+        unlockedClues: [data.initialClue || "No clue available"],
+        remainingClues: [],
+        hasWon: false,
+        hasLost: false,
+        solution: null,
+      };
+      localStorage.setItem(`40clues_progress_${activeToday}`, JSON.stringify(initialProgress));
     } catch (err) {
       setMessage("Network error while loading game.");
     } finally {
@@ -240,17 +247,19 @@ export default function Home() {
     newUnlockedClues: string[],
     won: boolean,
     lost: boolean,
-    sol: SolutionData | null
+    sol: SolutionData | null,
+    newRemainingClues?: string[]
   ) => {
     if (!gameDate) return;
     const progress: StoredGameProgress = {
       gameDate,
+      deckSeed,
       clueNumber: nextClueNum,
       scorePenalty: newPenalty,
       hasUsedFreePass: usedFreePass,
       attempts: newAttempts,
-      userDeck: userDeck,
       unlockedClues: newUnlockedClues,
+      remainingClues: newRemainingClues !== undefined ? newRemainingClues : remainingClues,
       hasWon: won,
       hasLost: lost,
       solution: sol,
@@ -277,29 +286,52 @@ export default function Home() {
     setTimeout(() => setIsShakeActive(false), 500);
   };
 
-  const handleSkipClue = () => {
+  const handleSkipClue = async () => {
     if (hasWon || hasLost || isSubmitting || clueNumber >= totalClues) return;
     const nextNum = clueNumber + 1;
-    const nextClueText = userDeck[nextNum - 1];
-    if (!nextClueText) return;
 
-    const penaltyToAdd = hasUsedFreePass ? 10 : 0;
-    const newPenalty = scorePenalty + penaltyToAdd;
-    const toastMsg = hasUsedFreePass
-      ? "Clue passed (-10 pts)"
-      : "Free Pass used! (0 pts deducted)";
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/game", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "pass",
+          deckSeed,
+          clueNumber: nextNum,
+          gameDate,
+        }),
+      });
 
-    setIsClueFading(true);
-    setTimeout(() => {
-      const newUnlocked = [...unlockedClues, nextClueText];
-      setClueNumber(nextNum);
-      setScorePenalty(newPenalty);
-      if (!hasUsedFreePass) setHasUsedFreePass(true);
-      setUnlockedClues(newUnlocked);
-      setIsClueFading(false);
-      setMessage(toastMsg);
-      saveProgress(nextNum, newPenalty, true, attempts, newUnlocked, false, false, null);
-    }, 150);
+      const data = await res.json();
+      if (!res.ok || !data.clue) {
+        setMessage("Failed to retrieve next clue. Try again.");
+        return;
+      }
+
+      const nextClueText = data.clue;
+      const penaltyToAdd = hasUsedFreePass ? 10 : 0;
+      const newPenalty = scorePenalty + penaltyToAdd;
+      const toastMsg = hasUsedFreePass
+        ? "Clue passed (-10 pts)"
+        : "Free Pass used! (0 pts deducted)";
+
+      setIsClueFading(true);
+      setTimeout(() => {
+        const newUnlocked = [...unlockedClues, nextClueText];
+        setClueNumber(nextNum);
+        setScorePenalty(newPenalty);
+        if (!hasUsedFreePass) setHasUsedFreePass(true);
+        setUnlockedClues(newUnlocked);
+        setIsClueFading(false);
+        setMessage(toastMsg);
+        saveProgress(nextNum, newPenalty, true, attempts, newUnlocked, false, false, null);
+      }, 150);
+    } catch {
+      setMessage("Network error passing clue.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleMovieGuess = async (selectedTitle: string) => {
@@ -315,7 +347,7 @@ export default function Home() {
       const res = await fetch("/api/guess", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guess: selectedTitle, clueNumber, gameDate }),
+        body: JSON.stringify({ guess: selectedTitle, clueNumber, gameDate, deckSeed }),
       });
       const data = await res.json();
 
@@ -327,10 +359,12 @@ export default function Home() {
           poster: data.poster || null,
         };
         setSolution(sol);
+        const rest = data.remainingClues || [];
+        setRemainingClues(rest);
         setMessage("Spot on! Brilliant deduction!");
         confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
         updateStreakOnWin();
-        saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol);
+        saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol, rest);
         syncScoreToDatabase(clueNumber, currentPotentialScore);
       } else {
         triggerErrorShake();
@@ -345,16 +379,18 @@ export default function Home() {
             poster: data.solution?.poster || null,
           };
           setSolution(finalSol);
+          const rest = data.remainingClues || [];
+          setRemainingClues(rest);
           setMessage(`Game over! The movie was: ${finalSol.title} (${finalSol.year})`);
           localStorage.setItem("40clues_streak", "0");
           setStreak(0);
-          saveProgress(clueNumber, scorePenalty, hasUsedFreePass, newAttempts, unlockedClues, false, true, finalSol);
+          saveProgress(clueNumber, scorePenalty, hasUsedFreePass, newAttempts, unlockedClues, false, true, finalSol, rest);
         } else {
           setIsClueFading(true);
           const newPenalty = scorePenalty + 25;
           setTimeout(() => {
             const nextNum = clueNumber + 1;
-            const nextClueText = userDeck[nextNum - 1];
+            const nextClueText = data.nextClue || "Clue unavailable";
             const newUnlocked = [...unlockedClues, nextClueText];
             setClueNumber(nextNum);
             setScorePenalty(newPenalty);
@@ -724,14 +760,14 @@ export default function Home() {
                 : "Curious? View all remaining clues"}
             </button>
 
-            {showRemainingClues && (
+            {showRemainingClues && remainingClues.length > 0 && (
               <div
                 id="remaining-clues-list"
                 role="region"
                 aria-labelledby="toggle-remaining-clues"
                 className="mt-2 max-h-40 overflow-y-auto text-left space-y-2 p-3 bg-slate-950/50 border border-slate-800 rounded-xl w-full"
               >
-                {userDeck.slice(clueNumber).map((clue, idx) => (
+                {remainingClues.map((clue, idx) => (
                   <p key={idx} className="text-xs text-slate-300">
                     <span className="text-amber-400 font-bold mr-2">
                       #{clueNumber + idx + 1}

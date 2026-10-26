@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { seededShuffle } from "@/lib/utils";
 
 function normalizeString(str: string) {
   return str
@@ -10,7 +11,7 @@ function normalizeString(str: string) {
 
 export async function POST(request: Request) {
   try {
-    const { guess, clueNumber, gameDate } = await request.json();
+    const { guess, clueNumber, gameDate, deckSeed } = await request.json();
 
     if (!guess) {
       return NextResponse.json({ error: "Guess is required" }, { status: 400 });
@@ -41,8 +42,9 @@ export async function POST(request: Request) {
     }
 
     const isMatch = normalizeString(guess) === normalizeString(game.title);
-    const clues = (game.clues as string[]) || [];
-    const isLastClue = clueNumber >= clues.length;
+    const rawClues = (game.clues as string[]) || [];
+    const deck = deckSeed ? seededShuffle(rawClues, deckSeed) : rawClues;
+    const isLastClue = clueNumber >= deck.length;
 
     let posterPath: string | null = null;
 
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
         title: game.title,
         year: game.year,
         poster: posterPath,
+        remainingClues: deck.slice(clueNumber),
       });
     }
 
@@ -92,7 +95,8 @@ export async function POST(request: Request) {
       solution: isLastClue
         ? { title: game.title, year: game.year, poster: posterPath }
         : null,
-      nextClue: !isLastClue ? clues[clueNumber] : null,
+      nextClue: !isLastClue ? deck[clueNumber] : null,
+      remainingClues: isLastClue ? deck.slice(clueNumber) : undefined,
     });
   } catch (err: any) {
     return NextResponse.json(
