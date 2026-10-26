@@ -1,14 +1,49 @@
 "use client";
 
-import React from "react";
-import { X, HelpCircle, Film, Sparkles, Trophy, Flame } from "lucide-react";
+import React, { useEffect } from "react";
+import {
+  X,
+  HelpCircle,
+  Film,
+  Sparkles,
+  Trophy,
+  Flame,
+  Calendar,
+  Award,
+  Check,
+  User,
+  CheckCircle2,
+} from "lucide-react";
 
 interface HowToPlayModalProps {
   isOpen: boolean;
   onClose: () => void;
+  isLoggedIn?: boolean;
+  onLogin?: () => void;
 }
 
-export default function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps) {
+export default function HowToPlayModal({
+  isOpen,
+  onClose,
+  isLoggedIn = false,
+  onLogin,
+}: HowToPlayModalProps) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -16,15 +51,21 @@ export default function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps)
       role="dialog"
       aria-modal="true"
       aria-labelledby="how-to-play-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-amber-400" aria-hidden="true" />
-            <h2 id="how-to-play-title" className="text-xl font-black text-slate-100">
-              How to Play 40Clues
-            </h2>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              <HelpCircle className="w-5 h-5" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 id="how-to-play-title" className="text-lg sm:text-xl font-black text-slate-100">
+                How to Play 40Clues
+              </h2>
+              <p className="text-[11px] text-slate-400">Rules, scoring, and member privileges</p>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -35,46 +76,108 @@ export default function HowToPlayModal({ isOpen, onClose }: HowToPlayModalProps)
           </button>
         </div>
 
-        <div className="flex flex-col gap-4 text-sm text-slate-300 leading-relaxed">
+        {/* Rules section */}
+        <div className="flex flex-col gap-3.5 text-xs text-slate-300 leading-relaxed">
           <div className="flex items-start gap-3">
-            <Film className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <Film className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <span className="font-bold text-slate-100">One Secret Movie Daily:</span> You have a deck of up to 40 shuffled clues about today's target film.
+              <span className="font-bold text-slate-100">One Secret Movie Daily:</span> You have a shuffled deck of up to 40 clues about today's target film.
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <Sparkles className="w-5 h-5 text-indigo-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <Sparkles className="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <span className="font-bold text-slate-100">Random Clue Types:</span> You'll get real plot details, behind-the-scenes trivia, iconic quotes, absurd background facts, or bad plot summaries!
+              <span className="font-bold text-slate-100">Random Clue Types:</span> You'll uncover real plot details, behind-the-scenes trivia, iconic quotes, absurd background facts, or hilarious bad plot summaries!
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <Trophy className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <Trophy className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <span className="font-bold text-slate-100">Scoring:</span> Start with <strong className="text-amber-400">1,000 points</strong>. Each wrong guess drops your score by <strong className="text-rose-400">25 points</strong>, and passing a clue drops <strong className="text-rose-400">10 points</strong> (first pass is free!). Minimum 25 pts for a win.
+              <span className="font-bold text-slate-100">Scoring:</span> Start with <strong className="text-amber-400 font-bold">1,000 points</strong>. Each wrong guess drops your score by <strong className="text-rose-400 font-bold">25 pts</strong>, and passing drops <strong className="text-rose-400 font-bold">10 pts</strong> (first pass is free!). Minimum score is 25 pts.
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <span className="text-base flex-shrink-0" aria-hidden="true">💡</span>
+            <span className="text-sm flex-shrink-0" aria-hidden="true">💡</span>
             <div>
-              <span className="font-bold text-slate-100">Tactical Intel:</span> Need a hint? Unlock the <strong className="text-amber-400">Release Decade</strong> or <strong className="text-amber-400">Primary Genre</strong> for <strong className="text-rose-400">-50 points</strong> each.
+              <span className="font-bold text-slate-100">Tactical Intel:</span> Need a hint? Unlock the <strong className="text-amber-400 font-bold">Release Decade</strong> or <strong className="text-amber-400 font-bold">Primary Genre</strong> for <strong className="text-rose-400 font-bold">-50 points</strong> each.
             </div>
           </div>
 
           <div className="flex items-start gap-3">
-            <Flame className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <Flame className="w-4 h-4 text-orange-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <span className="font-bold text-slate-100">Streaks & Leaderboard:</span> Guess every day to build your streak. Sign in to save your rank on the Daily Leaderboard!
+              <span className="font-bold text-slate-100">Daily Streaks:</span> Solve the puzzle each day to build your active streak!
             </div>
           </div>
         </div>
 
+        {/* Member Privileges Card */}
+        <section aria-labelledby="member-benefits-heading" className="bg-slate-950/80 border border-amber-500/30 rounded-xl p-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h3 id="member-benefits-heading" className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400">
+              <Sparkles className="w-4 h-4 text-amber-400" aria-hidden="true" />
+              <span>Why Sign In? Member Privileges</span>
+            </h3>
+            {isLoggedIn && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300">
+                <CheckCircle2 className="w-3 h-3" /> Unlocked
+              </span>
+            )}
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            While guests can play today's live daily puzzle, signing in with Google unlocks the full 40Clues experience:
+          </p>
+
+          <ul className="grid grid-cols-1 gap-2.5 text-xs text-slate-300">
+            <li className="flex items-start gap-2.5">
+              <Trophy className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <strong className="text-slate-100 font-semibold">Global Leaderboards:</strong> Compete on all-time rankings alongside film buffs worldwide.
+              </div>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Calendar className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <strong className="text-slate-100 font-semibold">Puzzle Archive Access:</strong> Unlock and replay every previous daily cinema mystery at your own pace.
+              </div>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Award className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <strong className="text-slate-100 font-semibold">Badges & Milestones:</strong> Earn achievements like <em>Cinephile Psychic</em>, <em>Speed Demon</em>, and <em>Clutch Detective</em>.
+              </div>
+            </li>
+            <li className="flex items-start gap-2.5">
+              <Check className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <div>
+                <strong className="text-slate-100 font-semibold">Career Stats & Cloud Sync:</strong> Track your completion history, guess distribution, and streaks across all devices.
+              </div>
+            </li>
+          </ul>
+
+          {!isLoggedIn && onLogin && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onLogin();
+              }}
+              className="mt-1 w-full min-h-[42px] px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+            >
+              <User className="w-3.5 h-3.5 text-slate-950" aria-hidden="true" />
+              <span>Sign in with Google</span>
+            </button>
+          )}
+        </section>
+
+        {/* Dismiss Button */}
         <button
           onClick={onClose}
-          className="w-full min-h-[44px] bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl transition-all shadow-md active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl transition-all shadow-md active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 text-xs"
         >
           Got it, let's play!
         </button>

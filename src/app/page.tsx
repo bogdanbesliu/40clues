@@ -1070,6 +1070,8 @@ export default function Home() {
       <HowToPlayModal
         isOpen={isHowToPlayOpen}
         onClose={() => setIsHowToPlayOpen(false)}
+        isLoggedIn={!!user}
+        onLogin={handleGoogleLogin}
       />
       <FeedbackModal
         isOpen={isFeedbackOpen}
