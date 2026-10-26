@@ -17,6 +17,7 @@ import {
   FastForward,
   User,
   Menu,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
@@ -25,6 +26,7 @@ import HowToPlayModal from "@/components/HowToPlayModal";
 import FeedbackModal from "@/components/FeedbackModal";
 import NextGameCountdown from "@/components/NextGameCountdown";
 import ShareModal from "@/components/ShareModal";
+import ArchiveModal from "@/components/ArchiveModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 
@@ -74,6 +76,7 @@ export default function Home() {
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showRemainingClues, setShowRemainingClues] = useState(false);
@@ -106,7 +109,10 @@ export default function Home() {
       if (activeUser) checkAndSyncPendingLocalScore(activeUser.id);
     });
 
-    initGame();
+    const searchParams = new URLSearchParams(window.location.search);
+    const dateParam = searchParams.get("date") || undefined;
+    initGame(dateParam);
+
     return () => subscription.unsubscribe();
   }, []);
 
@@ -143,17 +149,18 @@ export default function Home() {
     }
   };
 
-  const initGame = async () => {
+  const initGame = async (dateOverride?: string) => {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split("T")[0];
+      const targetDate = dateOverride || new URLSearchParams(window.location.search).get("date") || today;
       const savedStreak = parseInt(localStorage.getItem("40clues_streak") || "0", 10);
       setStreak(savedStreak);
 
-      const savedLocal = localStorage.getItem(`40clues_progress_${today}`);
+      const savedLocal = localStorage.getItem(`40clues_progress_${targetDate}`);
       if (savedLocal) {
         const parsed: StoredGameProgress = JSON.parse(savedLocal);
-        setGameDate(parsed.gameDate || today);
+        setGameDate(parsed.gameDate || targetDate);
         setDeckSeed(parsed.deckSeed || "");
         setClueNumber(parsed.clueNumber);
         setScorePenalty(parsed.scorePenalty || 0);
@@ -171,25 +178,32 @@ export default function Home() {
 
       // Generate a unique random deckSeed for this player (preserving RNG luck)
       const randomSeed = Math.random().toString(36).substring(2) + Date.now().toString(36);
-      const res = await fetch(`/api/game?deckSeed=${randomSeed}`);
+      const queryParam = targetDate ? `?date=${targetDate}&deckSeed=${randomSeed}` : `?deckSeed=${randomSeed}`;
+      const res = await fetch(`/api/game${queryParam}`);
       const data = await res.json();
       if (!res.ok) {
-        setMessage("Could not load today's game. Check connection.");
+        setMessage("Could not load puzzle. Check connection.");
         setIsLoading(false);
         return;
       }
 
-      const activeToday = data.gameDate || today;
-      setGameDate(activeToday);
+      const activeDate = data.gameDate || targetDate;
+      setGameDate(activeDate);
       setTotalClues(data.totalClues || 40);
       setDeckSeed(data.deckSeed || randomSeed);
       setUnlockedClues([data.initialClue || "No clue available"]);
       setRemainingClues([]);
       setUnlockedLifelines({});
       setClueNumber(1);
+      setAttempts([]);
+      setScorePenalty(0);
+      setHasUsedFreePass(false);
+      setHasWon(false);
+      setHasLost(false);
+      setSolution(null);
 
       const initialProgress: StoredGameProgress = {
-        gameDate: activeToday,
+        gameDate: activeDate,
         deckSeed: data.deckSeed || randomSeed,
         clueNumber: 1,
         scorePenalty: 0,
@@ -202,12 +216,22 @@ export default function Home() {
         hasLost: false,
         solution: null,
       };
-      localStorage.setItem(`40clues_progress_${activeToday}`, JSON.stringify(initialProgress));
+      localStorage.setItem(`40clues_progress_${activeDate}`, JSON.stringify(initialProgress));
     } catch (err) {
       setMessage("Network error while loading game.");
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSelectDate = (selectedDate: string) => {
+    const today = new Date().toISOString().split("T")[0];
+    if (selectedDate === today) {
+      window.history.replaceState({}, "", "/");
+    } else {
+      window.history.replaceState({}, "", `/?date=${selectedDate}`);
+    }
+    initGame(selectedDate);
   };
 
   const handleGoogleLogin = async () => {
@@ -286,6 +310,8 @@ export default function Home() {
   };
 
   const updateStreakOnWin = () => {
+    const today = new Date().toISOString().split("T")[0];
+    if (gameDate && gameDate !== today) return;
     const newStreak = streak + 1;
     setStreak(newStreak);
     localStorage.setItem("40clues_streak", newStreak.toString());
@@ -435,8 +461,11 @@ export default function Home() {
           const rest = data.remainingClues || [];
           setRemainingClues(rest);
           setMessage(`Game over! The movie was: ${finalSol.title} (${finalSol.year})`);
-          localStorage.setItem("40clues_streak", "0");
-          setStreak(0);
+          const today = new Date().toISOString().split("T")[0];
+          if (gameDate === today) {
+            localStorage.setItem("40clues_streak", "0");
+            setStreak(0);
+          }
           saveProgress(clueNumber, scorePenalty, hasUsedFreePass, newAttempts, unlockedClues, false, true, finalSol, rest);
         } else {
           setIsClueFading(true);
@@ -509,6 +538,15 @@ export default function Home() {
             <Trophy className="w-4 h-4" aria-hidden="true" />
           </button>
 
+          <button
+            onClick={() => setIsArchiveOpen(true)}
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            title="Puzzle Archive"
+            aria-label="Puzzle Archive"
+          >
+            <Calendar className="w-4 h-4" aria-hidden="true" />
+          </button>
+
           {user ? (
             <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
@@ -553,6 +591,26 @@ export default function Home() {
           )}
         </div>
       </header>
+
+      {/* Historical Archive Puzzle Banner */}
+      {gameDate && gameDate !== new Date().toISOString().split("T")[0] && (
+        <aside
+          aria-label="Historical puzzle notice"
+          className="max-w-xl w-full mb-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs shadow-sm"
+        >
+          <div className="flex items-center gap-2 text-amber-300 font-semibold">
+            <Calendar className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+            <span>Archive Puzzle ({gameDate})</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleSelectDate(new Date().toISOString().split("T")[0])}
+            className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all text-[11px] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          >
+            Play Today's Puzzle
+          </button>
+        </aside>
+      )}
 
       {/* Visual Clue Progress Bar */}
       <div className="max-w-xl w-full mb-5">
@@ -928,6 +986,12 @@ export default function Home() {
       <footer className="max-w-xl w-full border-t border-slate-900/80 mt-12 pt-6 pb-4 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
         <div>© 40Clues 2026. All rights reserved.</div>
         <div className="flex items-center gap-4">
+          <Link
+            href="/archive"
+            className="hover:text-amber-400 transition-colors underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
+          >
+            Archive
+          </Link>
           <button
             onClick={() => setIsFeedbackOpen(true)}
             className="hover:text-amber-400 transition-colors underline underline-offset-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
@@ -944,6 +1008,12 @@ export default function Home() {
       </footer>
 
       {/* Modals */}
+      <ArchiveModal
+        isOpen={isArchiveOpen}
+        onClose={() => setIsArchiveOpen(false)}
+        onSelectDate={handleSelectDate}
+        currentGameDate={gameDate}
+      />
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}

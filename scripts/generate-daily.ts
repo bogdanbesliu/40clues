@@ -41,7 +41,7 @@ async function fetchTargetMovie(tmdbApiKey: string, playedTitles: Set<string>) {
     throw new Error("No unplayed movies found on this TMDB page.");
   }
 
-  // Alegem un film nefolosit din lotul descărcat
+  // Pick an unused film from the fetched list
   const selected = movies[Math.floor(Math.random() * movies.length)];
   const releaseYear = selected.release_date
     ? parseInt(selected.release_date.split("-")[0], 10)
@@ -57,14 +57,14 @@ async function fetchTargetMovie(tmdbApiKey: string, playedTitles: Set<string>) {
 export async function runDailyGenerator() {
   const { supabase, ai, tmdbApiKey } = getClients();
 
-  // 1. Verificăm jocurile din Supabase
+  // 1. Check existing games from Supabase
   const { data: playedGames } = await supabase.from("daily_games").select("title");
   const playedTitles = new Set(playedGames?.map((g) => (g.title || "").toLowerCase().trim()) || []);
 
   const selectedMovie = await fetchTargetMovie(tmdbApiKey, playedTitles);
   console.log(`🎯 Target: "${selectedMovie.title}" (${selectedMovie.year})`);
 
-  // 2. Prompt calibrat conform celor 40 de indicii din Game Design
+  // 2. Calibrated prompt matching 40-clue game design
   const prompt = `
 Generate 40 clues for the trivia game "40Clues".
 Target Movie: "${selectedMovie.title}" (${selectedMovie.year}).
@@ -83,7 +83,7 @@ STRICT RULES:
 - Output MUST be a JSON object with a single field "clues" containing exactly 40 strings.
 `;
 
-  // 3. Apel rapid cu fallback pe gemini-3.8-flash și gemini-3.5-flash-lite
+  // 3. Fast call with fallback to gemini-3.8-flash and gemini-3.5-flash-lite
   const candidateModels = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
   let clues: string[] = [];
 
@@ -123,7 +123,7 @@ STRICT RULES:
     throw new Error("Failed to generate clues from Gemini models.");
   }
 
-  // 4. Salvare în Supabase pentru data curentă (sau update dacă există deja)
+  // 4. Save to Supabase for current date (or update if already exists)
   const today = new Date().toISOString().split("T")[0];
 
   const { error } = await supabase.from("daily_games").upsert(
