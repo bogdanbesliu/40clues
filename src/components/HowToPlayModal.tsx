@@ -11,9 +11,6 @@ import {
   Flame,
   Calendar,
   Award,
-  Check,
-  User,
-  CheckCircle2,
   Crown,
 } from "lucide-react";
 
@@ -138,12 +135,6 @@ export default function HowToPlayModal({
                 </>
               )}
             </h3>
-
-            {isLoggedIn && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300">
-                <CheckCircle2 className="w-3 h-3" /> Active Member
-              </span>
-            )}
           </div>
 
           <p className="text-[11px] text-slate-400">
