@@ -26,6 +26,22 @@ interface ShareModalProps {
   gameDate: string;
 }
 
+function drawRoundedRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number
+) {
+  const c = ctx as any;
+  if (typeof c.roundRect === "function") {
+    c.roundRect(x, y, w, h, r);
+  } else {
+    ctx.rect(x, y, w, h);
+  }
+}
+
 export default function ShareModal({
   isOpen,
   onClose,
@@ -47,9 +63,14 @@ export default function ShareModal({
   const [canMobileShare, setCanMobileShare] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Check if browser supports sharing image files
+  // Check if browser supports Web Share API without triggering TS2774
   useEffect(() => {
-    if (typeof navigator !== "undefined" && navigator.share && navigator.canShare) {
+    const nav = typeof navigator !== "undefined" ? (navigator as any) : null;
+    if (
+      nav &&
+      typeof nav.share === "function" &&
+      typeof nav.canShare === "function"
+    ) {
       setCanMobileShare(true);
     }
   }, []);
@@ -111,7 +132,7 @@ export default function ShareModal({
     ctx.strokeStyle = "rgba(245, 158, 11, 0.5)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(badgeX, 245, badgeWidth, 54, 27);
+    drawRoundedRect(ctx, badgeX, 245, badgeWidth, 54, 27);
     ctx.fill();
     ctx.stroke();
 
@@ -138,7 +159,7 @@ export default function ShareModal({
       ctx.strokeStyle = "rgba(51, 65, 85, 0.8)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(bx, boxY, boxWidth, boxHeight, 20);
+      drawRoundedRect(ctx, bx, boxY, boxWidth, boxHeight, 20);
       ctx.fill();
       ctx.stroke();
 
@@ -169,7 +190,7 @@ export default function ShareModal({
       ctx.strokeStyle = isGreen ? "#34D399" : "#334155";
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.roundRect(bx, blockY, blockWidth, blockWidth, 18);
+      drawRoundedRect(ctx, bx, blockY, blockWidth, blockWidth, 18);
       ctx.fill();
       ctx.stroke();
     }
@@ -182,7 +203,7 @@ export default function ShareModal({
     ctx.strokeStyle = "rgba(71, 85, 105, 0.6)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(movieCardX, movieCardY, movieCardWidth, 140, 24);
+    drawRoundedRect(ctx, movieCardX, movieCardY, movieCardWidth, 140, 24);
     ctx.fill();
     ctx.stroke();
 
@@ -271,15 +292,17 @@ export default function ShareModal({
       type: "image/png",
     });
 
+    const nav = typeof navigator !== "undefined" ? (navigator as any) : null;
+
     try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
+      if (nav && typeof nav.canShare === "function" && nav.canShare({ files: [file] })) {
+        await nav.share({
           files: [file],
           title: "40Clues Cinema Result",
           text: generateShareText(),
         });
-      } else if (navigator.share) {
-        await navigator.share({
+      } else if (nav && typeof nav.share === "function") {
+        await nav.share({
           title: "40Clues Cinema Result",
           text: generateShareText(),
           url: "https://40clues.com",
