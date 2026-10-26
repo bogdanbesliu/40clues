@@ -3,8 +3,20 @@
 import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import {
-  Sparkles, Trophy, Share2, Check, Flame, LogIn, LogOut,
-  ChevronDown, ChevronUp, Film, HelpCircle, FastForward, User, Menu
+  Sparkles,
+  Trophy,
+  Share2,
+  Check,
+  Flame,
+  LogIn,
+  LogOut,
+  ChevronDown,
+  ChevronUp,
+  Film,
+  HelpCircle,
+  FastForward,
+  User,
+  Menu,
 } from "lucide-react";
 import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
@@ -80,7 +92,9 @@ export default function Home() {
       if (user) checkAndSyncPendingLocalScore(user.id);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       const activeUser = session?.user ?? null;
       setUser(activeUser);
       if (activeUser) checkAndSyncPendingLocalScore(activeUser.id);
@@ -184,7 +198,9 @@ export default function Home() {
   const handleGoogleLogin = async () => {
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
   };
 
@@ -269,7 +285,9 @@ export default function Home() {
 
     const penaltyToAdd = hasUsedFreePass ? 10 : 0;
     const newPenalty = scorePenalty + penaltyToAdd;
-    const toastMsg = hasUsedFreePass ? "Clue passed (-10 pts)" : "Free Pass used! (0 pts deducted)";
+    const toastMsg = hasUsedFreePass
+      ? "Clue passed (-10 pts)"
+      : "Free Pass used! (0 pts deducted)";
 
     setIsClueFading(true);
     setTimeout(() => {
@@ -303,7 +321,11 @@ export default function Home() {
 
       if (data.correct) {
         setHasWon(true);
-        const sol: SolutionData = { title: data.title, year: data.year, poster: data.poster || null };
+        const sol: SolutionData = {
+          title: data.title,
+          year: data.year,
+          poster: data.poster || null,
+        };
         setSolution(sol);
         setMessage("Spot on! Brilliant deduction!");
         confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
@@ -317,7 +339,11 @@ export default function Home() {
 
         if (data.gameOver || clueNumber >= totalClues) {
           setHasLost(true);
-          const finalSol: SolutionData = { title: data.solution?.title || "", year: data.solution?.year || 0, poster: data.solution?.poster || null };
+          const finalSol: SolutionData = {
+            title: data.solution?.title || "",
+            year: data.solution?.year || 0,
+            poster: data.solution?.poster || null,
+          };
           setSolution(finalSol);
           setMessage(`Game over! The movie was: ${finalSol.title} (${finalSol.year})`);
           localStorage.setItem("40clues_streak", "0");
@@ -350,7 +376,9 @@ export default function Home() {
     const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
     const greenBlock = "🟩";
     const blackBlock = "⬛";
-    const emojiGrid = greenBlock.repeat(Math.max(1, 6 - blocksCount)) + blackBlock.repeat(blocksCount - 1);
+    const emojiGrid =
+      greenBlock.repeat(Math.max(1, 6 - blocksCount)) +
+      blackBlock.repeat(blocksCount - 1);
     const shareText = `40Clues #Cinema 🎬\n💡 ${clueNumber}/${totalClues} clues\n🏆 ${currentPotentialScore} pts\n🔥 ${streak}-day streak\n${emojiGrid}\n\nhttps://40clues.com`;
 
     if (navigator.clipboard) {
@@ -365,7 +393,8 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-6 sm:py-8 font-sans selection:bg-amber-500/30">
       {/* Header */}
-      <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800/80 pb-4 mb-3 relative">
+      {/* Header fără Hamburger Menu - toate butoanele vizibile pe un singur rând */}
+      <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800/80 pb-4 mb-3">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
             40Clues
@@ -386,9 +415,10 @@ export default function Home() {
           <button
             onClick={() => setIsHowToPlayOpen(true)}
             className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
+            title="How to Play"
+            aria-label="How to Play"
           >
             <HelpCircle className="w-4 h-4" />
-            {/* PING ONBOARDING: Pulsează dacă nu ai streak și ești la primul indiciu */}
             {streak === 0 && unlockedClues.length <= 1 && (
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -397,78 +427,72 @@ export default function Home() {
             )}
           </button>
 
-          {/* Desktop Menu */}
-          <div className="hidden sm:flex items-center gap-2">
-            <button onClick={() => setIsLeaderboardOpen(true)} className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all">
-              <Trophy className="w-4 h-4" />
-            </button>
-            {user ? (
-              <div className="flex items-center gap-2">
-                <Link href="/profile" className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group">
-                  {user.user_metadata?.avatar_url ? (
-                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-6 h-6 rounded-full border border-amber-400/80 object-cover" />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
-                      {(user.email || "U").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="text-xs font-semibold text-slate-300 group-hover:text-amber-300">Profile</span>
-                </Link>
-                <button onClick={handleSignOut} className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-500 hover:text-rose-400 active:scale-95 rounded-lg transition-all p-1.5 hover:bg-slate-900">
-                  <LogOut className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <button onClick={handleGoogleLogin} className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95">
-                <User className="w-4 h-4 text-amber-400" />
-                <span>Sign In</span>
-              </button>
-            )}
-          </div>
+          <button
+            onClick={() => setIsLeaderboardOpen(true)}
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all"
+            title="Leaderboards"
+            aria-label="Leaderboards"
+          >
+            <Trophy className="w-4 h-4" />
+          </button>
 
-          {/* Mobile Menu Dropdown */}
-          <div className="sm:hidden relative">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 active:scale-95 transition-all"
-            >
-              <Menu className="w-4 h-4" />
-            </button>
-            {isMobileMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-xl flex flex-col p-2 z-50">
-                <button onClick={() => { setIsLeaderboardOpen(true); setIsMobileMenuOpen(false); }} className="flex items-center gap-2 p-2 text-sm text-slate-200 hover:bg-slate-800 rounded-lg text-left">
-                  <Trophy className="w-4 h-4 text-amber-400" /> Leaderboard
-                </button>
-                {user ? (
-                  <>
-                    <Link href="/profile" className="flex items-center gap-2 p-2 text-sm text-slate-200 hover:bg-slate-800 rounded-lg text-left">
-                      <User className="w-4 h-4 text-emerald-400" /> My Profile
-                    </Link>
-                    <button onClick={handleSignOut} className="flex items-center gap-2 p-2 text-sm text-rose-400 hover:bg-slate-800 rounded-lg text-left">
-                      <LogOut className="w-4 h-4" /> Sign Out
-                    </button>
-                  </>
+          {user ? (
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Link
+                href="/profile"
+                className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full sm:rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group"
+                title="My Profile"
+              >
+                {user.user_metadata?.avatar_url ? (
+                  <img
+                    src={user.user_metadata.avatar_url}
+                    alt="Profile"
+                    className="w-7 h-7 sm:w-6 sm:h-6 rounded-full border border-amber-400/80 object-cover"
+                  />
                 ) : (
-                  <button onClick={handleGoogleLogin} className="flex items-center gap-2 p-2 text-sm text-slate-200 hover:bg-slate-800 rounded-lg text-left">
-                    <LogIn className="w-4 h-4 text-emerald-400" /> Sign In
-                  </button>
+                  <div className="w-7 h-7 sm:w-6 sm:h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs">
+                    {(user.email || "U").charAt(0).toUpperCase()}
+                  </div>
                 )}
-              </div>
-            )}
-          </div>
+                <span className="hidden sm:inline text-xs font-semibold text-slate-300 group-hover:text-amber-300">
+                  Profile
+                </span>
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="min-h-[40px] min-w-[40px] sm:min-h-[36px] sm:min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-400 active:scale-95 rounded-full sm:rounded-lg bg-slate-900 sm:bg-transparent border border-slate-700/80 sm:border-0 transition-all p-1.5 hover:bg-slate-900"
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleGoogleLogin}
+              className="min-h-[40px] flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-full sm:rounded-xl transition-all shadow-sm active:scale-95"
+            >
+              <User className="w-4 h-4 text-amber-400" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </header>
 
       {/* Visual Clue Progress Bar */}
       <div className="max-w-xl w-full mb-5">
         <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400 mb-1.5">
-          <span>Clue {clueNumber} of {totalClues}</span>
+          <span>
+            Clue {clueNumber} of {totalClues}
+          </span>
           <span className="text-amber-400">{currentPotentialScore} pts left</span>
         </div>
         <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800/80">
           <div
-            className={`h-full transition-all duration-500 ease-out ${clueNumber <= 10 ? "bg-gradient-to-r from-emerald-500 to-amber-400"
-              : clueNumber <= 25 ? "bg-gradient-to-r from-amber-400 to-orange-500"
+            className={`h-full transition-all duration-500 ease-out ${clueNumber <= 10
+              ? "bg-gradient-to-r from-emerald-500 to-amber-400"
+              : clueNumber <= 25
+                ? "bg-gradient-to-r from-amber-400 to-orange-500"
                 : "bg-gradient-to-r from-orange-500 to-rose-500"
               }`}
             style={{ width: `${progressPercent}%` }}
@@ -497,20 +521,31 @@ export default function Home() {
                 <span className="flex items-center gap-1.5 text-amber-400 font-bold tracking-wide text-xs">
                   <Sparkles className="w-4 h-4" /> Clue #{clueNumber}
                 </span>
-                {unlockedClues.length > 0 && (() => {
-                  const badge = getClueBadge(unlockedClues[unlockedClues.length - 1], clueNumber);
-                  return (
-                    <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${badge.colorClass}`}>
-                      <span>{badge.emoji}</span><span>{badge.label}</span>
-                    </span>
-                  );
-                })()}
+                {unlockedClues.length > 0 &&
+                  (() => {
+                    const badge = getClueBadge(
+                      unlockedClues[unlockedClues.length - 1],
+                      clueNumber
+                    );
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border transition-all ${badge.colorClass}`}
+                      >
+                        <span>{badge.emoji}</span>
+                        <span>{badge.label}</span>
+                      </span>
+                    );
+                  })()}
               </div>
               <span className="bg-slate-950/80 border border-slate-800 px-2.5 py-1 rounded-md text-amber-300 font-bold text-xs shadow-inner">
                 {currentPotentialScore} pts
               </span>
             </div>
-            <p aria-live="polite" className={`text-base sm:text-xl font-medium text-slate-100 leading-relaxed italic my-auto transition-all duration-200 ${isClueFading ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"}`}>
+            <p
+              aria-live="polite"
+              className={`text-base sm:text-xl font-medium text-slate-100 leading-relaxed italic my-auto transition-all duration-200 ${isClueFading ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"
+                }`}
+            >
               "{unlockedClues[unlockedClues.length - 1]}"
             </p>
             <div className="mt-3 text-[11px] text-slate-400 flex items-center justify-between">
@@ -522,10 +557,16 @@ export default function Home() {
 
         {/* Live Status Toast */}
         {message && (
-          <div role="status" aria-live="polite" className={`p-3 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all shadow-md ${hasWon ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-200"
-            : hasLost ? "bg-rose-950/90 border border-rose-600/80 text-rose-200"
-              : "bg-slate-900 border border-slate-700 text-slate-200"
-            }`}>
+          <div
+            role="status"
+            aria-live="polite"
+            className={`p-3 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all shadow-md ${hasWon
+              ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-200"
+              : hasLost
+                ? "bg-rose-950/90 border border-rose-600/80 text-rose-200"
+                : "bg-slate-900 border border-slate-700 text-slate-200"
+              }`}
+          >
             {message}
           </div>
         )}
@@ -534,7 +575,11 @@ export default function Home() {
         {!hasWon && !hasLost ? (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <MovieSearchInput disabled={isLoading || isSubmitting} isErrorShake={isShakeActive} onSelectMovie={handleMovieGuess} />
+              <MovieSearchInput
+                disabled={isLoading || isSubmitting}
+                isErrorShake={isShakeActive}
+                onSelectMovie={handleMovieGuess}
+              />
               <button
                 type="button"
                 onClick={handleSkipClue}
@@ -542,7 +587,9 @@ export default function Home() {
                 className="min-h-[48px] px-3.5 bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700/80 rounded-xl text-slate-300 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 disabled:opacity-40"
               >
                 <FastForward className="w-4 h-4" />
-                <span className="hidden sm:inline">{hasUsedFreePass ? "Pass (-10)" : "Free Pass"}</span>
+                <span className="hidden sm:inline">
+                  {hasUsedFreePass ? "Pass (-10)" : "Free Pass"}
+                </span>
               </button>
             </div>
           </div>
@@ -550,23 +597,39 @@ export default function Home() {
           <section className="bg-slate-900 border border-slate-800/90 p-5 sm:p-7 rounded-2xl text-center flex flex-col items-center gap-4 sm:gap-5 shadow-2xl">
             <div className="flex flex-col items-center">
               <span className="text-4xl mb-1">{hasWon ? "🎉" : "🎬"}</span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100">{hasWon ? "Cinema Mastermind!" : "Game Over"}</h2>
-              <p className="text-xs text-slate-400 mt-1">{hasWon ? "You successfully deduced today's movie!" : "Better luck on tomorrow's clues!"}</p>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100">
+                {hasWon ? "Cinema Mastermind!" : "Game Over"}
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                {hasWon
+                  ? "You successfully deduced today's movie!"
+                  : "Better luck on tomorrow's clues!"}
+              </p>
             </div>
 
             {solution && (
               <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950/80 border border-slate-800 p-3.5 sm:p-4 rounded-xl w-full">
                 {solution.poster ? (
-                  <img src={solution.poster} alt={solution.title} className="w-20 sm:w-24 h-30 sm:h-36 object-cover rounded-lg shadow-lg border border-slate-700 flex-shrink-0" />
+                  <img
+                    src={solution.poster}
+                    alt={solution.title}
+                    className="w-20 sm:w-24 h-30 sm:h-36 object-cover rounded-lg shadow-lg border border-slate-700 flex-shrink-0"
+                  />
                 ) : (
                   <div className="w-20 sm:w-24 h-30 sm:h-36 bg-slate-800 rounded-lg flex items-center justify-center flex-shrink-0 border border-slate-700">
                     <Film className="w-8 h-8 text-slate-500" />
                   </div>
                 )}
                 <div className="text-center sm:text-left flex flex-col justify-center">
-                  <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">Target Film</span>
-                  <h3 className="text-lg sm:text-xl font-bold text-slate-100">{solution.title}</h3>
-                  <span className="text-xs sm:text-sm text-slate-400 font-medium">Released in {solution.year}</span>
+                  <span className="text-xs uppercase tracking-wider text-amber-400 font-bold">
+                    Target Film
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-100">
+                    {solution.title}
+                  </h3>
+                  <span className="text-xs sm:text-sm text-slate-400 font-medium">
+                    Released in {solution.year}
+                  </span>
                 </div>
               </div>
             )}
@@ -574,36 +637,72 @@ export default function Home() {
             {hasWon && (
               <div className="grid grid-cols-3 gap-2.5 w-full">
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Score</span>
-                  <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">{animatedScore}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">
+                    Score
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">
+                    {animatedScore}
+                  </span>
                 </div>
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Clues Used</span>
-                  <span className="text-xl sm:text-2xl font-black text-slate-200 mt-0.5">{clueNumber}</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">
+                    Clues Used
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-slate-200 mt-0.5">
+                    {clueNumber}
+                  </span>
                 </div>
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
-                  <span className="text-[10px] uppercase font-bold text-slate-400">Streak</span>
-                  <span className="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">{streak}🔥</span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400">
+                    Streak
+                  </span>
+                  <span className="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">
+                    {streak}🔥
+                  </span>
                 </div>
               </div>
             )}
 
-            {hasWon && <div className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full">{getRankBadge(currentPotentialScore)}</div>}
+            {hasWon && (
+              <div className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/80 px-3 py-1 rounded-full">
+                {getRankBadge(currentPotentialScore)}
+              </div>
+            )}
 
-            <button onClick={handleShare} className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none">
-              {hasCopied ? <><Check className="w-5 h-5 text-white" /><span>Copied to Clipboard!</span></> : <><Share2 className="w-5 h-5" /><span>Share Result</span></>}
+            <button
+              onClick={handleShare}
+              className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none"
+            >
+              {hasCopied ? (
+                <>
+                  <Check className="w-5 h-5 text-white" />
+                  <span>Copied to Clipboard!</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-5 h-5" />
+                  <span>Share Result</span>
+                </>
+              )}
             </button>
 
             {/* BUTONUL NOU - Vezi indiciile nearătate */}
-            <button onClick={() => setShowRemainingClues(!showRemainingClues)} className="text-xs font-medium text-slate-400 hover:text-slate-200 underline underline-offset-4 transition-colors">
-              {showRemainingClues ? "Hide remaining clues" : "Curious? View all remaining clues"}
+            <button
+              onClick={() => setShowRemainingClues(!showRemainingClues)}
+              className="text-xs font-medium text-slate-400 hover:text-slate-200 underline underline-offset-4 transition-colors"
+            >
+              {showRemainingClues
+                ? "Hide remaining clues"
+                : "Curious? View all remaining clues"}
             </button>
 
             {showRemainingClues && (
               <div className="mt-2 max-h-40 overflow-y-auto text-left space-y-2 p-3 bg-slate-950/50 border border-slate-800 rounded-xl w-full">
                 {userDeck.slice(clueNumber).map((clue, idx) => (
                   <p key={idx} className="text-xs text-slate-300">
-                    <span className="text-amber-500/80 font-bold mr-2">#{clueNumber + idx + 1}</span>
+                    <span className="text-amber-500/80 font-bold mr-2">
+                      #{clueNumber + idx + 1}
+                    </span>
                     {clue}
                   </p>
                 ))}
@@ -615,15 +714,30 @@ export default function Home() {
         {/* Collapsible Unlocked Clues History */}
         {unlockedClues.length > 1 && (
           <div className="flex flex-col border border-slate-800/90 bg-slate-900/40 rounded-xl overflow-hidden">
-            <button onClick={() => setIsHistoryExpanded(!isHistoryExpanded)} className="min-h-[44px] w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-900/60 transition-colors">
+            <button
+              onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
+              className="min-h-[44px] w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-slate-300 hover:text-slate-100 hover:bg-slate-900/60 transition-colors"
+            >
               <span>Previous Unlocked Clues ({unlockedClues.length - 1})</span>
-              {isHistoryExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {isHistoryExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
             </button>
             {isHistoryExpanded && (
               <div className="flex flex-col gap-2 p-3 border-t border-slate-800/80">
-                {unlockedClues.slice(0, -1).reverse().map((c, i) => (
-                  <div key={i} className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-lg text-xs text-slate-300 italic leading-relaxed">"{c}"</div>
-                ))}
+                {unlockedClues
+                  .slice(0, -1)
+                  .reverse()
+                  .map((c, i) => (
+                    <div
+                      key={i}
+                      className="bg-slate-950/70 border border-slate-800/80 p-3 rounded-lg text-xs text-slate-300 italic leading-relaxed"
+                    >
+                      "{c}"
+                    </div>
+                  ))}
               </div>
             )}
           </div>
@@ -632,10 +746,15 @@ export default function Home() {
         {/* Incorrect Guesses (Pill format) */}
         {attempts.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Incorrect guesses ({attempts.length})</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              Incorrect guesses ({attempts.length})
+            </span>
             <div className="flex flex-wrap gap-1.5">
               {attempts.map((attempt, idx) => (
-                <span key={idx} className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm">
+                <span
+                  key={idx}
+                  className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm"
+                >
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                   {attempt}
                 </span>
