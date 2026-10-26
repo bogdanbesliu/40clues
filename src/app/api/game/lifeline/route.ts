@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { getAuthenticatedUser } from "@/lib/serverAuth";
 
 const TMDB_GENRES: Record<number, string> = {
   28: "Action",
@@ -34,7 +35,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const today = gameDate || new Date().toISOString().split("T")[0];
+    const currentToday = new Date().toISOString().split("T")[0];
+    const today = gameDate || currentToday;
+
+    // Restrict archive puzzles to signed-in users only
+    if (gameDate && gameDate !== currentToday) {
+      const user = await getAuthenticatedUser(request);
+      if (!user) {
+        return NextResponse.json(
+          {
+            error: "Archive puzzles are only available to signed-in users.",
+            isGuest: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     let { data: game, error } = await supabase
       .from("daily_games")

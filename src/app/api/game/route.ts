@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { seededShuffle } from "@/lib/utils";
+import { getAuthenticatedUser } from "@/lib/serverAuth";
 
 async function getGameForDate(targetDate?: string) {
   const dateToUse = targetDate || new Date().toISOString().split("T")[0];
@@ -30,6 +31,22 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const dateParam = searchParams.get("date") || undefined;
+    const today = new Date().toISOString().split("T")[0];
+
+    // Restrict archive puzzles to signed-in users only
+    if (dateParam && dateParam !== today) {
+      const user = await getAuthenticatedUser(request);
+      if (!user) {
+        return NextResponse.json(
+          {
+            error: "Archive puzzles are only available to signed-in users.",
+            isGuest: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const deckSeed =
       searchParams.get("deckSeed") || Math.random().toString(36).substring(2);
 
@@ -74,6 +91,22 @@ export async function POST(request: Request) {
       );
     }
 
+    const today = new Date().toISOString().split("T")[0];
+
+    // Restrict archive puzzles to signed-in users only
+    if (gameDate && gameDate !== today) {
+      const user = await getAuthenticatedUser(request);
+      if (!user) {
+        return NextResponse.json(
+          {
+            error: "Archive puzzles are only available to signed-in users.",
+            isGuest: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     const { game, error } = await getGameForDate(gameDate);
 
     if (error || !game) {
@@ -86,17 +119,17 @@ export async function POST(request: Request) {
     const rawClues = (game.clues as string[]) || [];
     const deck = seededShuffle(rawClues, deckSeed);
 
-    const requestedIndex = clueNumber - 1;
-    if (requestedIndex < 0 || requestedIndex >= deck.length) {
+    const clueIdx = clueNumber - 1;
+    if (clueIdx < 0 || clueIdx >= deck.length) {
       return NextResponse.json(
-        { error: "Clue index out of bounds" },
+        { error: "Invalid clue number" },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       clueNumber,
-      clue: deck[requestedIndex],
+      clue: deck[clueIdx],
     });
   } catch (err: any) {
     return NextResponse.json(

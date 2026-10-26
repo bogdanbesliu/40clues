@@ -153,7 +153,20 @@ export default function Home() {
     setIsLoading(true);
     try {
       const today = new Date().toISOString().split("T")[0];
-      const targetDate = dateOverride || new URLSearchParams(window.location.search).get("date") || today;
+      let targetDate = dateOverride || new URLSearchParams(window.location.search).get("date") || today;
+
+      // Restrict historical puzzles to authenticated users
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const currentUser = session?.user;
+
+      if (!currentUser && targetDate !== today) {
+        window.history.replaceState({}, "", "/");
+        targetDate = today;
+        setMessage("Historical puzzles are members-only. Loaded today's puzzle!");
+      }
+
       const savedStreak = parseInt(localStorage.getItem("40clues_streak") || "0", 10);
       setStreak(savedStreak);
 
@@ -179,10 +192,14 @@ export default function Home() {
       // Generate a unique random deckSeed for this player (preserving RNG luck)
       const randomSeed = Math.random().toString(36).substring(2) + Date.now().toString(36);
       const queryParam = targetDate ? `?date=${targetDate}&deckSeed=${randomSeed}` : `?deckSeed=${randomSeed}`;
-      const res = await fetch(`/api/game${queryParam}`);
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+      const res = await fetch(`/api/game${queryParam}`, { headers });
       const data = await res.json();
       if (!res.ok) {
-        setMessage("Could not load puzzle. Check connection.");
+        setMessage(data.error || "Could not load puzzle. Check connection.");
         setIsLoading(false);
         return;
       }
@@ -226,6 +243,11 @@ export default function Home() {
 
   const handleSelectDate = (selectedDate: string) => {
     const today = new Date().toISOString().split("T")[0];
+    if (!user && selectedDate !== today) {
+      setMessage("Sign in with Google to play historical archive puzzles.");
+      setIsArchiveOpen(true);
+      return;
+    }
     if (selectedDate === today) {
       window.history.replaceState({}, "", "/");
     } else {
@@ -328,9 +350,17 @@ export default function Home() {
 
     setIsSubmitting(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/game", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           action: "pass",
           deckSeed,
@@ -341,7 +371,7 @@ export default function Home() {
 
       const data = await res.json();
       if (!res.ok || !data.clue) {
-        setMessage("Failed to retrieve next clue. Try again.");
+        setMessage(data.error || "Failed to retrieve next clue. Try again.");
         return;
       }
 
@@ -374,9 +404,17 @@ export default function Home() {
     if (hasWon || hasLost || isLifelineLoading || unlockedLifelines[type]) return;
     setIsLifelineLoading(type);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/game/lifeline", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ type, gameDate }),
       });
       const data = await res.json();
@@ -423,9 +461,17 @@ export default function Home() {
 
     setIsSubmitting(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/guess", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ guess: selectedTitle, clueNumber, gameDate, deckSeed }),
       });
       const data = await res.json();
@@ -1013,6 +1059,8 @@ export default function Home() {
         onClose={() => setIsArchiveOpen(false)}
         onSelectDate={handleSelectDate}
         currentGameDate={gameDate}
+        isLoggedIn={!!user}
+        onLogin={handleGoogleLogin}
       />
       <LeaderboardModal
         isOpen={isLeaderboardOpen}

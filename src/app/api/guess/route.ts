@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { seededShuffle } from "@/lib/utils";
+import { getAuthenticatedUser } from "@/lib/serverAuth";
 
 function normalizeString(str: string) {
   return str
@@ -17,7 +18,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Guess is required" }, { status: 400 });
     }
 
-    const today = gameDate || new Date().toISOString().split("T")[0];
+    const currentToday = new Date().toISOString().split("T")[0];
+    const today = gameDate || currentToday;
+
+    // Restrict archive puzzles to signed-in users only
+    if (gameDate && gameDate !== currentToday) {
+      const user = await getAuthenticatedUser(request);
+      if (!user) {
+        return NextResponse.json(
+          {
+            error: "Archive puzzles are only available to signed-in users.",
+            isGuest: true,
+          },
+          { status: 403 }
+        );
+      }
+    }
 
     let { data: game, error } = await supabase
       .from("daily_games")

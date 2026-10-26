@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Calendar, Play, CheckCircle2, Trophy, Clock, Film } from "lucide-react";
+import { X, Calendar, Play, CheckCircle2, Film, Lock, User } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
 
 interface ArchiveGameItem {
   id: string;
@@ -24,6 +25,8 @@ interface ArchiveModalProps {
   onClose: () => void;
   onSelectDate: (date: string) => void;
   currentGameDate: string;
+  isLoggedIn: boolean;
+  onLogin: () => void;
 }
 
 export default function ArchiveModal({
@@ -31,21 +34,51 @@ export default function ArchiveModal({
   onClose,
   onSelectDate,
   currentGameDate,
+  isLoggedIn,
+  onLogin,
 }: ArchiveModalProps) {
   const [games, setGames] = useState<ArchiveGameItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthRequired, setIsAuthRequired] = useState(false);
   const [localStatuses, setLocalStatuses] = useState<Record<string, LocalGameStatus>>({});
+
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     if (!isOpen) return;
 
+    if (!isLoggedIn) {
+      setIsAuthRequired(true);
+      setIsLoading(false);
+      return;
+    }
+
     const fetchArchive = async () => {
       setIsLoading(true);
       setError(null);
+      setIsAuthRequired(false);
       try {
-        const res = await fetch("/api/games/archive");
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
+        const res = await fetch("/api/games/archive", { headers });
         const data = await res.json();
+
+        if (res.status === 401 || data.isGuest) {
+          setIsAuthRequired(true);
+          return;
+        }
+
         if (!res.ok) {
           setError(data.error || "Failed to load archive");
           return;
@@ -90,7 +123,7 @@ export default function ArchiveModal({
     };
 
     fetchArchive();
-  }, [isOpen]);
+  }, [isOpen, isLoggedIn]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -159,9 +192,31 @@ export default function ArchiveModal({
           </button>
         </div>
 
-        {/* Content list */}
+        {/* Content list or Locked State */}
         <div className="flex-1 overflow-y-auto py-4 space-y-2.5 pr-1">
-          {isLoading ? (
+          {isAuthRequired ? (
+            <div className="py-8 px-4 text-center flex flex-col items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-inner">
+                <Lock className="w-7 h-7" aria-hidden="true" />
+              </div>
+              <div className="space-y-1.5 max-w-sm">
+                <h3 className="text-base sm:text-lg font-bold text-slate-100">
+                  Members-Only Archive
+                </h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Guests can only play today's live puzzle. Sign in with Google to unlock past puzzles, track your completion history, and claim a spot on the Global Leaderboards!
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onLogin}
+                className="min-h-[44px] px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              >
+                <User className="w-4 h-4 text-slate-950" aria-hidden="true" />
+                <span>Sign in with Google</span>
+              </button>
+            </div>
+          ) : isLoading ? (
             <div className="py-16 text-center space-y-3">
               <div className="inline-block animate-spin text-2xl text-amber-400">⏳</div>
               <p className="text-xs text-slate-400">Loading puzzle archive...</p>
@@ -275,9 +330,9 @@ export default function ArchiveModal({
           )}
         </div>
 
-        {/* Footer info note */}
+        {/* Footer note */}
         <div className="pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>🎲 Each puzzle has random RNG clue shuffle</span>
+          <span>{isAuthRequired ? "🔒 Members exclusive" : "🎲 Random RNG clue shuffle"}</span>
           <button
             type="button"
             onClick={onClose}
