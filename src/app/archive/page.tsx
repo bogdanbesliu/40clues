@@ -1,23 +1,83 @@
-import { Metadata } from "next";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Calendar, Film } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { ArrowLeft, Calendar, Film, CheckCircle2, X, Play } from "lucide-react";
 
-export const metadata: Metadata = {
-  title: "Puzzle Archive — 40Clues Cinema",
-  description: "Browse and play past daily movie deduction puzzles from the 40Clues archive.",
-};
+interface ArchiveGameItem {
+  id: string;
+  game_date: string;
+  year?: number;
+}
 
-export default async function ArchivePage() {
-  const today = new Date().toISOString().split("T")[0];
+interface LocalGameStatus {
+  hasWon: boolean;
+  hasLost: boolean;
+  score?: number;
+  cluesUsed?: number;
+  title?: string;
+  year?: number;
+  isToday: boolean;
+}
 
-  const { data: games } = await supabase
-    .from("daily_games")
-    .select("id, game_date, year")
-    .lte("game_date", today)
-    .order("game_date", { ascending: false });
+export default function ArchivePage() {
+  const [games, setGames] = useState<ArchiveGameItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [localStatuses, setLocalStatuses] = useState<Record<string, LocalGameStatus>>({});
 
-  const pastGames = games || [];
+  useEffect(() => {
+    const fetchArchive = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const res = await fetch("/api/games/archive");
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || "Failed to load archive");
+          return;
+        }
+
+        const items: ArchiveGameItem[] = data.games || [];
+        setGames(items);
+
+        const today = new Date().toISOString().split("T")[0];
+        const statuses: Record<string, LocalGameStatus> = {};
+
+        items.forEach((item) => {
+          const isToday = item.game_date === today;
+          const raw = localStorage.getItem(`40clues_progress_${item.game_date}`);
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              statuses[item.game_date] = {
+                hasWon: !!parsed.hasWon,
+                hasLost: !!parsed.hasLost,
+                score: parsed.hasWon ? Math.max(25, 1000 - (parsed.scorePenalty || 0)) : 0,
+                cluesUsed: parsed.clueNumber || 1,
+                title: parsed.solution?.title,
+                year: parsed.solution?.year,
+                isToday,
+              };
+            } catch {
+              statuses[item.game_date] = { hasWon: false, hasLost: false, isToday };
+            }
+          } else {
+            statuses[item.game_date] = { hasWon: false, hasLost: false, isToday };
+          }
+        });
+
+        setLocalStatuses(statuses);
+      } catch {
+        setError("Network error fetching archive.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchArchive();
+  }, []);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -36,55 +96,83 @@ export default async function ArchivePage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-8 font-sans">
+    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-8 font-sans selection:bg-amber-500/30">
       <div className="max-w-xl w-full flex flex-col gap-6">
-        {/* Back Link */}
+        {/* Back Navigation */}
         <div>
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-lg p-1"
+            aria-label="Back to today's puzzle"
           >
             <ArrowLeft className="w-4 h-4" aria-hidden="true" />
             <span>Back to Today's Puzzle</span>
           </Link>
         </div>
 
-        {/* Title Header */}
-        <div className="flex items-center gap-3 border-b border-slate-800 pb-5">
+        {/* Page Header */}
+        <header className="flex items-center gap-3 border-b border-slate-800 pb-5">
           <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
             <Calendar className="w-6 h-6" aria-hidden="true" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-slate-100">Puzzle Archive</h1>
+            <h1 className="text-2xl font-black text-slate-100 tracking-tight">Puzzle Archive</h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Every past daily movie deduction puzzle, available to play anytime
+              Every past mystery cinema deduction puzzle, available to play anytime
             </p>
           </div>
-        </div>
+        </header>
 
-        {/* Puzzles List */}
+        {/* List of Archive Puzzles */}
         <div className="flex flex-col gap-3">
-          {pastGames.length === 0 ? (
+          {isLoading ? (
+            <div className="py-16 text-center space-y-3">
+              <div className="inline-block animate-spin text-2xl text-amber-400">⏳</div>
+              <p className="text-xs text-slate-400">Loading puzzle archive...</p>
+            </div>
+          ) : error ? (
+            <div className="py-12 text-center text-rose-400 text-xs">
+              <p>{error}</p>
+            </div>
+          ) : games.length === 0 ? (
             <div className="text-center py-12 text-slate-400 text-sm">
               No past puzzles available yet.
             </div>
           ) : (
-            pastGames.map((game) => {
-              const isToday = game.game_date === today;
+            games.map((game) => {
+              const status = localStatuses[game.game_date];
+              const isToday = status?.isToday;
               const decade = game.year ? `${Math.floor(Number(game.year) / 10) * 10}s` : null;
 
               return (
                 <Link
                   key={game.id || game.game_date}
                   href={`/?date=${game.game_date}`}
-                  className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-amber-500/40 transition-all flex items-center justify-between gap-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-900 hover:border-amber-500/40 transition-all flex items-center justify-between gap-4 group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 shadow-sm"
+                  aria-label={`Play puzzle for ${formatDate(game.game_date)}`}
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 flex items-center justify-center flex-shrink-0 group-hover:border-amber-500/40 group-hover:text-amber-400 transition-colors">
-                      <Film className="w-5 h-5" aria-hidden="true" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                        status?.hasWon
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : status?.hasLost
+                          ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                          : "bg-slate-800 border border-slate-700 text-slate-300 group-hover:border-amber-500/40 group-hover:text-amber-400"
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {status?.hasWon ? (
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                      ) : status?.hasLost ? (
+                        <X className="w-5 h-5 text-rose-400" />
+                      ) : (
+                        <Film className="w-5 h-5" />
+                      )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-slate-200 text-sm group-hover:text-amber-300 transition-colors">
                           {formatDate(game.game_date)}
                         </span>
@@ -93,16 +181,41 @@ export default async function ArchivePage() {
                             Today
                           </span>
                         )}
+                        {status?.hasWon && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300">
+                            Solved • {status.score} pts
+                          </span>
+                        )}
+                        {status?.hasLost && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300">
+                            Unsolved
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        {decade ? `Mystery Film from the ${decade}` : "40 Clues Cinema Puzzle"}
+
+                      <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        {status?.hasWon && status.title ? (
+                          <span className="text-slate-300 font-medium">
+                            {status.title} {status.year ? `(${status.year})` : ""}
+                          </span>
+                        ) : status?.hasLost && status.title ? (
+                          <span className="text-rose-300/80 font-medium">
+                            {status.title} {status.year ? `(${status.year})` : ""}
+                          </span>
+                        ) : decade ? (
+                          <span>Mystery Film from the {decade}</span>
+                        ) : (
+                          <span>40 Clues Cinema Puzzle</span>
+                        )}
                       </p>
                     </div>
                   </div>
 
-                  <span className="text-xs font-bold text-slate-400 group-hover:text-amber-400 flex items-center gap-1 transition-colors">
-                    <span>Play</span>
-                    <span aria-hidden="true">→</span>
+                  <span className="text-xs font-bold text-slate-400 group-hover:text-amber-400 flex items-center gap-1.5 transition-colors flex-shrink-0">
+                    <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+                    <span>
+                      {status?.hasWon || status?.hasLost ? "Review" : "Play"}
+                    </span>
                   </span>
                 </Link>
               );
@@ -110,10 +223,10 @@ export default async function ArchivePage() {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="pt-6 border-t border-slate-900 text-center text-xs text-slate-400">
+        {/* Footer info note */}
+        <footer className="pt-6 border-t border-slate-900 text-center text-xs text-slate-500">
           © 40Clues 2026 • Cinema Deduction Game
-        </div>
+        </footer>
       </div>
     </main>
   );
