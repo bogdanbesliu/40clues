@@ -145,10 +145,14 @@ export default function ProfilePage() {
   }, [supabase]);
 
   const handleGoogleLogin = async () => {
+    const isLocal =
+      typeof window !== "undefined" &&
+      (window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1"));
+    const redirectOrigin = isLocal ? window.location.origin : "https://40clues.com";
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/profile`,
+        redirectTo: `${redirectOrigin}/auth/callback?next=/profile`,
       },
     });
   };

@@ -7,11 +7,15 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = searchParams.get("next") || "/";
 
+  // Ensure production redirects always return to canonical https://40clues.com
+  const isLocal = origin.includes("localhost") || origin.includes("127.0.0.1");
+  const targetOrigin = isLocal ? origin : "https://40clues.com";
+
   if (code) {
     const cookieStore = await cookies();
-    
-    // Create redirect response upfront
-    const response = NextResponse.redirect(`${origin}${next}`);
+
+    // Create redirect response upfront targeting the canonical domain
+    const response = NextResponse.redirect(`${targetOrigin}${next}`);
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,10 +26,12 @@ export async function GET(request: Request) {
             return cookieStore.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
-              response.cookies.set(name, value, options);
-            });
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+                response.cookies.set(name, value, options);
+              });
+            } catch {}
           },
         },
       }
@@ -37,5 +43,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/?auth_error=true`);
+  return NextResponse.redirect(`${targetOrigin}/?auth_error=true`);
 }

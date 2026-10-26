@@ -6,7 +6,9 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "40Clues",
     description:
       "Daily cinema deduction trivia game. Guess the secret film from 40 randomized witty clues.",
+    id: "/",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#020617",
     theme_color: "#020617",
