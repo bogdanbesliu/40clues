@@ -75,6 +75,7 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
+  const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState<boolean>(true);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
@@ -97,9 +98,20 @@ export default function Home() {
   const currentPotentialScore = Math.max(25, 1000 - scorePenalty);
 
   useEffect(() => {
+    try {
+      const seen = localStorage.getItem("40clues_has_seen_how_to_play") === "true";
+      setHasSeenHowToPlay(seen);
+    } catch {}
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
-      if (user) checkAndSyncPendingLocalScore(user.id);
+      if (user) {
+        setHasSeenHowToPlay(true);
+        try {
+          localStorage.setItem("40clues_has_seen_how_to_play", "true");
+        } catch {}
+        checkAndSyncPendingLocalScore(user.id);
+      }
     });
 
     const {
@@ -107,7 +119,13 @@ export default function Home() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const activeUser = session?.user ?? null;
       setUser(activeUser);
-      if (activeUser) checkAndSyncPendingLocalScore(activeUser.id);
+      if (activeUser) {
+        setHasSeenHowToPlay(true);
+        try {
+          localStorage.setItem("40clues_has_seen_how_to_play", "true");
+        } catch {}
+        checkAndSyncPendingLocalScore(activeUser.id);
+      }
     });
 
     const searchParams = new URLSearchParams(window.location.search);
@@ -271,6 +289,14 @@ export default function Home() {
       window.history.replaceState({}, "", `/?date=${selectedDate}`);
     }
     initGame(selectedDate);
+  };
+
+  const handleOpenHowToPlay = () => {
+    setHasSeenHowToPlay(true);
+    try {
+      localStorage.setItem("40clues_has_seen_how_to_play", "true");
+    } catch {}
+    setIsHowToPlayOpen(true);
   };
 
   const handleGoogleLogin = async () => {
@@ -581,13 +607,13 @@ export default function Home() {
           )}
 
           <button
-            onClick={() => setIsHowToPlayOpen(true)}
+            onClick={handleOpenHowToPlay}
             className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             title="How to Play"
             aria-label="How to Play"
           >
             <HelpCircle className="w-4 h-4" aria-hidden="true" />
-            {streak === 0 && unlockedClues.length <= 1 && (
+            {!user && !hasSeenHowToPlay && streak === 0 && unlockedClues.length <= 1 && (
               <span className="absolute -top-1 -right-1 flex h-3 w-3" aria-hidden="true">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
@@ -840,7 +866,7 @@ export default function Home() {
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    setIsHowToPlayOpen(true);
+                    handleOpenHowToPlay();
                   }}
                   className="w-full min-h-[48px] px-3.5 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800/70 hover:border-amber-500/40 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                 >
@@ -1318,7 +1344,13 @@ export default function Home() {
       />
       <HowToPlayModal
         isOpen={isHowToPlayOpen}
-        onClose={() => setIsHowToPlayOpen(false)}
+        onClose={() => {
+          setIsHowToPlayOpen(false);
+          setHasSeenHowToPlay(true);
+          try {
+            localStorage.setItem("40clues_has_seen_how_to_play", "true");
+          } catch {}
+        }}
         isLoggedIn={!!user}
         onLogin={handleGoogleLogin}
       />
