@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { isNameForbidden } from "@/lib/nameModeration";
 
 export async function GET(request: Request) {
   try {
@@ -282,6 +283,14 @@ export async function PATCH(request: Request) {
     if (trimmedName.length < 2 || trimmedName.length > 25) {
       return NextResponse.json(
         { error: "Name must be between 2 and 25 characters" },
+        { status: 400 }
+      );
+    }
+
+    const check = await isNameForbidden(trimmedName);
+    if (check.isForbidden) {
+      return NextResponse.json(
+        { error: "This name contains restricted or inappropriate language. Please choose another name." },
         { status: 400 }
       );
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Trophy, Sparkles, X, User, ArrowRight } from "lucide-react";
+import { Trophy, Sparkles, X, User, ArrowRight, Loader2 } from "lucide-react";
 
 interface GuestNameModalProps {
   isOpen: boolean;
@@ -22,6 +22,7 @@ export default function GuestNameModal({
 }: GuestNameModalProps) {
   const [name, setName] = useState(initialName);
   const [error, setError] = useState<string | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -29,6 +30,7 @@ export default function GuestNameModal({
       // If it's a default Cinephile_1234, let them start fresh or keep it
       setName(stored);
       setError(null);
+      setIsValidating(false);
       document.body.style.overflow = "hidden";
 
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -44,14 +46,39 @@ export default function GuestNameModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
+    if (!trimmed) {
+      onSubmitName("");
+      return;
+    }
     if (trimmed.length > 25) {
       setError("Name must be 25 characters or fewer.");
       return;
     }
-    onSubmitName(trimmed);
+
+    setIsValidating(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/name/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setError(data.error || "This name contains restricted or inappropriate language. Please choose another name.");
+        setIsValidating(false);
+        return;
+      }
+      onSubmitName(trimmed);
+    } catch {
+      onSubmitName(trimmed);
+    } finally {
+      setIsValidating(false);
+    }
   };
 
   const handleSkip = () => {
@@ -121,15 +148,26 @@ export default function GuestNameModal({
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <button
               type="submit"
-              className="flex-1 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              disabled={isValidating}
+              className="flex-1 min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
             >
-              <span>Confirm & View Leaderboard</span>
-              <ArrowRight className="w-4 h-4" />
+              {isValidating ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Checking name...</span>
+                </>
+              ) : (
+                <>
+                  <span>Confirm & View Leaderboard</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
             <button
               type="button"
               onClick={handleSkip}
-              className="min-h-[44px] px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+              disabled={isValidating}
+              className="min-h-[44px] px-4 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-300 font-semibold rounded-xl text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
             >
               Stay Anonymous
             </button>

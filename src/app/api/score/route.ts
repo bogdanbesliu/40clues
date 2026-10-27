@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { isNameForbidden } from "@/lib/nameModeration";
 
 export async function POST(request: Request) {
   try {
@@ -142,15 +143,24 @@ export async function POST(request: Request) {
 
     // CASE 2: Unauthenticated user (Guest) -> save to Daily Leaderboard with custom or generated username
     const trimmedAnon = typeof anonName === "string" ? anonName.trim().slice(0, 25) : "";
-    const generatedUsername =
-      trimmedAnon || `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+    let finalUsername = trimmedAnon;
+
+    if (finalUsername) {
+      const check = await isNameForbidden(finalUsername);
+      if (check.isForbidden) {
+        // Fall back to clean anonymous name if restricted language was bypassed
+        finalUsername = `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+    } else {
+      finalUsername = `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+    }
 
     const { error: guestError } = await supabase.from("daily_scores").insert({
       user_id: null,
       game_date: gameDate,
       clues_used: cluesUsed,
       score: score,
-      anon_name: generatedUsername,
+      anon_name: finalUsername,
     });
 
     if (guestError) {
