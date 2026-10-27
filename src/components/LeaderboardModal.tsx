@@ -223,8 +223,7 @@ export default function LeaderboardModal({
           >
             {entries.map((entry, index) => {
               const displayName =
-                entry.profiles?.display_name || entry.anon_name || "Cinephile_Guest";
-              const isRegistered = Boolean(entry.profiles?.display_name);
+                entry.profiles?.display_name || entry.anon_name || "Cinephile";
 
               return (
                 <div
@@ -255,16 +254,9 @@ export default function LeaderboardModal({
                     )}
 
                     <div className="flex flex-col min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-slate-100 truncate max-w-[130px] sm:max-w-[160px]">
-                          {displayName}
-                        </span>
-                        {!isRegistered && activeTab === "daily" && (
-                          <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-200 font-bold">
-                            Guest
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-xs font-semibold text-slate-100 truncate max-w-[140px] sm:max-w-[180px]">
+                        {displayName}
+                      </span>
                       {activeTab === "daily" && entry.created_at && (
                         <span className="text-[10px] text-slate-400">
                           {new Date(entry.created_at).toLocaleTimeString([], {
