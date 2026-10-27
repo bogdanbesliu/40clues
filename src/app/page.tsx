@@ -28,8 +28,7 @@ import FeedbackModal from "@/components/FeedbackModal";
 import NextGameCountdown from "@/components/NextGameCountdown";
 import ShareModal from "@/components/ShareModal";
 import ArchiveModal from "@/components/ArchiveModal";
-import AuthModal from "@/components/AuthModal";
-import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 
 interface SolutionData {
@@ -90,9 +89,11 @@ export default function Home() {
   const [isShakeActive, setIsShakeActive] = useState(false);
   const [isClueFading, setIsClueFading] = useState(false);
   const [animatedScore, setAnimatedScore] = useState<number>(0);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   const currentPotentialScore = Math.max(25, 1000 - scorePenalty);
 
@@ -309,10 +310,6 @@ export default function Home() {
         redirectTo: `${redirectOrigin}/auth/callback`,
       },
     });
-  };
-
-  const handleOpenAuth = () => {
-    setIsAuthModalOpen(true);
   };
 
   const handleSignOut = async () => {
@@ -680,7 +677,7 @@ export default function Home() {
               </div>
             ) : (
               <button
-                onClick={handleOpenAuth}
+                onClick={handleGoogleLogin}
                 className="min-h-[38px] flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 <User className="w-4 h-4 text-amber-400" aria-hidden="true" />
@@ -799,13 +796,13 @@ export default function Home() {
                     </p>
                     <button
                       onClick={() => {
-                        handleOpenAuth();
+                        handleGoogleLogin();
                         setIsMobileMenuOpen(false);
                       }}
                       className="w-full min-h-[42px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
                     >
                       <LogIn className="w-4 h-4" aria-hidden="true" />
-                      <span>Sign In</span>
+                      <span>Sign in with Google</span>
                     </button>
                   </div>
                 )}
@@ -1338,14 +1335,14 @@ export default function Home() {
         onSelectDate={handleSelectDate}
         currentGameDate={gameDate}
         isLoggedIn={!!user}
-        onLogin={handleOpenAuth}
+        onLogin={handleGoogleLogin}
       />
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         gameDate={gameDate}
         isLoggedIn={!!user}
-        onLogin={handleOpenAuth}
+        onLogin={handleGoogleLogin}
       />
       <HowToPlayModal
         isOpen={isHowToPlayOpen}
@@ -1357,16 +1354,12 @@ export default function Home() {
           } catch {}
         }}
         isLoggedIn={!!user}
-        onLogin={handleOpenAuth}
+        onLogin={handleGoogleLogin}
       />
       <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
         userId={user?.id}
-      />
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
       />
       <ShareModal
         isOpen={isShareModalOpen}

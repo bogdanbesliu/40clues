@@ -142,7 +142,7 @@ export default function HowToPlayModal({
           <p className="text-[11px] text-slate-400">
             {isLoggedIn
               ? "As an authenticated Cinephile, all premium features and history tracking are active on your account:"
-              : "While guests can play today's live daily puzzle, signing in unlocks the full 40Clues experience:"}
+              : "While guests can play today's live daily puzzle, signing in with Google unlocks the full 40Clues experience:"}
           </p>
 
           <ul className="grid grid-cols-1 gap-2.5 text-xs text-slate-300">
@@ -205,7 +205,7 @@ export default function HowToPlayModal({
                 className="mt-1 w-full min-h-[42px] px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
               >
                 <User className="w-3.5 h-3.5 text-slate-950" aria-hidden="true" />
-                <span>Sign In to Unlock Member Perks</span>
+                <span>Sign in with Google</span>
               </button>
             )
           )}

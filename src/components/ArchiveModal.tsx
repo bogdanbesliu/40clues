@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { X, Calendar, Play, CheckCircle2, Film, Lock, User } from "lucide-react";
-import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import { createBrowserClient } from "@supabase/ssr";
 
 interface ArchiveGameItem {
   id: string;
@@ -43,7 +43,10 @@ export default function ArchiveModal({
   const [isAuthRequired, setIsAuthRequired] = useState(false);
   const [localStatuses, setLocalStatuses] = useState<Record<string, LocalGameStatus>>({});
 
-  const supabase = getSupabaseBrowserClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -201,7 +204,7 @@ export default function ArchiveModal({
                   Members-Only Archive
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Guests can only play today's live puzzle. Sign in to unlock past puzzles, track your completion history, and claim a spot on the Global Leaderboards!
+                  Guests can only play today's live puzzle. Sign in with Google to unlock past puzzles, track your completion history, and claim a spot on the Global Leaderboards!
                 </p>
               </div>
               <button
@@ -210,7 +213,7 @@ export default function ArchiveModal({
                 className="min-h-[44px] px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 <User className="w-4 h-4 text-slate-950" aria-hidden="true" />
-                <span>Sign In to Unlock</span>
+                <span>Sign in with Google</span>
               </button>
             </div>
           ) : isLoading ? (
