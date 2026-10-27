@@ -658,7 +658,7 @@ export default function Home() {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           {streak > 0 && (
-            <div className="flex items-center gap-1 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 px-2.5 py-1.5 rounded-full shadow-sm">
+            <div className="h-[40px] px-3 flex items-center justify-center gap-1.5 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 rounded-full shadow-sm">
               <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
               <span>{streak}</span>
             </div>

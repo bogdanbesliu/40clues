@@ -331,103 +331,102 @@ export default function ProfilePage() {
         </header>
 
         {/* User Card */}
-        <div className="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between shadow-md">
-          <div className="flex items-center gap-3.5">
-            {user.avatar ? (
-              <img
-                src={user.avatar}
-                alt=""
-                aria-hidden="true"
-                className="w-13 h-13 rounded-full border-2 border-amber-400/80 object-cover"
-              />
-            ) : (
-              <div className="w-13 h-13 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-lg" aria-hidden="true">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0">
-              {isEditingName ? (
-                <form onSubmit={handleSaveName} className="flex flex-col gap-1.5 my-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      value={nameInput}
-                      onChange={(e) => {
-                        setNameInput(e.target.value);
-                        if (nameError) setNameError(null);
-                      }}
-                      maxLength={25}
-                      autoFocus
-                      disabled={isSavingName}
-                      placeholder="Display Name"
-                      className="bg-slate-950 border border-amber-500/70 focus:border-amber-400 rounded-lg px-2.5 py-1 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/30 w-36 sm:w-52"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isSavingName || !nameInput.trim() || nameInput.trim() === user.name}
-                      className="min-h-[32px] min-w-[32px] p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                      title="Save name"
-                      aria-label="Save name"
-                    >
-                      {isSavingName ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Check className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsEditingName(false);
-                        setNameError(null);
-                      }}
-                      disabled={isSavingName}
-                      className="min-h-[32px] min-w-[32px] p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-lg transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                      title="Cancel"
-                      aria-label="Cancel editing"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  {nameError && (
-                    <span className="text-[11px] text-rose-400 font-medium">{nameError}</span>
-                  )}
-                </form>
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2 truncate">
-                    <span className="truncate">{user.name}</span>
-                    {stats.currentStreak >= 7 && (
-                      <span className="text-[10px] bg-orange-950/80 text-orange-300 border border-orange-800 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
-                        PRO
-                      </span>
+        <div className="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl flex items-start gap-3.5 shadow-md">
+          {user.avatar ? (
+            <img
+              src={user.avatar}
+              alt=""
+              aria-hidden="true"
+              className="w-13 h-13 rounded-full border-2 border-amber-400/80 object-cover flex-shrink-0"
+            />
+          ) : (
+            <div className="w-13 h-13 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold text-lg flex-shrink-0" aria-hidden="true">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            {isEditingName ? (
+              <form onSubmit={handleSaveName} className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 w-full max-w-sm">
+                  <input
+                    type="text"
+                    value={nameInput}
+                    onChange={(e) => {
+                      setNameInput(e.target.value);
+                      if (nameError) setNameError(null);
+                    }}
+                    maxLength={25}
+                    autoFocus
+                    disabled={isSavingName}
+                    placeholder="Display Name"
+                    className="flex-1 min-w-[120px] bg-slate-950 border border-amber-500/70 focus:border-amber-400 rounded-lg px-2.5 py-1.5 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSavingName || !nameInput.trim() || nameInput.trim() === user.name}
+                    className="min-h-[36px] min-w-[36px] p-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center flex-shrink-0 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    title="Save name"
+                    aria-label="Save name"
+                  >
+                    {isSavingName ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
                     )}
-                  </h1>
+                  </button>
                   <button
                     type="button"
-                    onClick={handleStartEditName}
-                    className="p-1 rounded-md text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 flex-shrink-0"
-                    title="Change display name"
-                    aria-label="Change display name"
+                    onClick={() => {
+                      setIsEditingName(false);
+                      setNameError(null);
+                    }}
+                    disabled={isSavingName}
+                    className="min-h-[36px] min-w-[36px] p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-lg transition-all flex items-center justify-center flex-shrink-0 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                    title="Cancel"
+                    aria-label="Cancel editing"
                   >
-                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
-              )}
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-slate-400 truncate">{user.email}</span>
-                {nameSuccess && (
-                  <span className="text-[11px] text-emerald-400 font-bold animate-in fade-in">
-                    ✓ Updated!
-                  </span>
+                {nameError && (
+                  <span className="text-[11px] text-rose-400 font-medium">{nameError}</span>
                 )}
+              </form>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2 truncate">
+                  <span className="truncate">{user.name}</span>
+                  {stats.currentStreak >= 7 && (
+                    <span className="text-[10px] bg-orange-950/80 text-orange-300 border border-orange-800 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
+                      PRO
+                    </span>
+                  )}
+                </h1>
+                <button
+                  type="button"
+                  onClick={handleStartEditName}
+                  className="p-1 rounded-md text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 flex-shrink-0 touch-manipulation"
+                  title="Change display name"
+                  aria-label="Change display name"
+                >
+                  <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                </button>
               </div>
+            )}
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-xs text-slate-400 truncate">{user.email}</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-orange-950/70 border border-orange-800/80 px-3 py-1.5 rounded-full">
-            <Flame className="w-4 h-4 text-orange-400 fill-orange-400" aria-hidden="true" />
-            <span className="text-sm font-black text-orange-300">{stats.currentStreak}🔥</span>
+            <div className="flex items-center gap-2 mt-2">
+              <div className="inline-flex items-center gap-1.5 bg-orange-950/70 border border-orange-800/80 px-2.5 py-1 rounded-full text-xs font-bold text-orange-300 shadow-sm">
+                <Flame className="w-3.5 h-3.5 text-orange-400 fill-orange-400" aria-hidden="true" />
+                <span>{stats.currentStreak} {stats.currentStreak === 1 ? "day streak" : "day streak"}🔥</span>
+              </div>
+              {nameSuccess && (
+                <span className="text-[11px] text-emerald-400 font-bold animate-in fade-in">
+                  ✓ Name updated!
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
