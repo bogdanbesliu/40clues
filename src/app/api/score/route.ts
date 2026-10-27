@@ -170,7 +170,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       guest: true,
-      anonName: generatedUsername,
+      anonName: finalUsername,
     });
   } catch (err: any) {
     return NextResponse.json(
