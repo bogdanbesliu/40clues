@@ -50,12 +50,20 @@ export async function POST(request: Request) {
 
     // CASE 1: Authenticated user (signed in with Google)
     if (user) {
+      // Check if user has an existing custom display_name in profiles
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("display_name, avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+
       const displayName =
+        existingProfile?.display_name ||
         user.user_metadata?.full_name ||
         user.user_metadata?.name ||
         user.email?.split("@")[0] ||
         "Detective";
-      const avatarUrl = user.user_metadata?.avatar_url || null;
+      const avatarUrl = existingProfile?.avatar_url || user.user_metadata?.avatar_url || null;
 
       await supabase.from("profiles").upsert(
         {
@@ -132,9 +140,10 @@ export async function POST(request: Request) {
       });
     }
 
-    // CASE 2: Unauthenticated user (Guest) -> save to Daily Leaderboard with generated username
+    // CASE 2: Unauthenticated user (Guest) -> save to Daily Leaderboard with custom or generated username
+    const trimmedAnon = typeof anonName === "string" ? anonName.trim().slice(0, 25) : "";
     const generatedUsername =
-      anonName || `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+      trimmedAnon || `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
 
     const { error: guestError } = await supabase.from("daily_scores").insert({
       user_id: null,

@@ -201,12 +201,25 @@ export async function GET(request: Request) {
       },
     ];
 
+    // Fetch custom profile info if available
+    const { data: profileRow } = await supabase
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const finalDisplayName =
+      profileRow?.display_name ||
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "Detective";
+
     return NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
-        name: user.user_metadata?.full_name || user.email?.split("@")[0] || "Detective",
-        avatar: user.user_metadata?.avatar_url || null,
+        name: finalDisplayName,
+        avatar: profileRow?.avatar_url || user.user_metadata?.avatar_url || null,
       },
       stats: {
         totalPlayed,
@@ -223,6 +236,83 @@ export async function GET(request: Request) {
     console.error("API Profile crash:", err);
     return NextResponse.json(
       { error: "Internal server error", details: err?.message || String(err) },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "").trim();
+
+    if (!token) {
+      return NextResponse.json({ error: "Missing authorization token" }, { status: 401 });
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const name = body?.name;
+
+    if (!name || typeof name !== "string") {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+
+    const trimmedName = name.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 25) {
+      return NextResponse.json(
+        { error: "Name must be between 2 and 25 characters" },
+        { status: 400 }
+      );
+    }
+
+    // 1. Update profiles table
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert(
+        {
+          id: user.id,
+          display_name: trimmedName,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+    if (profileError) {
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    // 2. Also update anon_name in daily_scores for this user so historical leaderboards display the new name
+    await supabase
+      .from("daily_scores")
+      .update({ anon_name: trimmedName })
+      .eq("user_id", user.id);
+
+    return NextResponse.json({ success: true, name: trimmedName });
+  } catch (err: any) {
+    console.error("API Profile PATCH error:", err);
+    return NextResponse.json(
+      { error: "Failed to update profile name", details: err?.message || String(err) },
       { status: 500 }
     );
   }

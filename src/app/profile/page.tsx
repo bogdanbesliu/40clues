@@ -14,6 +14,10 @@ import {
   Film,
   ChevronDown,
   ChevronUp,
+  Pencil,
+  Check,
+  X,
+  Loader2,
 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -63,6 +67,13 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const [showAllBadges, setShowAllBadges] = useState(false);
+
+  // Display Name editing
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSuccess, setNameSuccess] = useState(false);
 
   const supabase = useMemo(() => {
     return createBrowserClient(
@@ -160,6 +171,71 @@ export default function ProfilePage() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
+  };
+
+  const handleStartEditName = () => {
+    if (!data?.user) return;
+    setNameInput(data.user.name);
+    setNameError(null);
+    setNameSuccess(false);
+    setIsEditingName(true);
+  };
+
+  const handleSaveName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = nameInput.trim();
+    if (!trimmed || trimmed === data?.user.name) {
+      setIsEditingName(false);
+      return;
+    }
+    if (trimmed.length < 2 || trimmed.length > 25) {
+      setNameError("Name must be between 2 and 25 characters.");
+      return;
+    }
+
+    setIsSavingName(true);
+    setNameError(null);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ name: trimmed }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        setNameError(resData.error || "Failed to update name.");
+        return;
+      }
+
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              user: {
+                ...prev.user,
+                name: trimmed,
+              },
+            }
+          : prev
+      );
+      setIsEditingName(false);
+      setNameSuccess(true);
+      setTimeout(() => setNameSuccess(false), 3000);
+    } catch {
+      setNameError("Network error updating name.");
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
   if (isLoading) {
@@ -269,16 +345,83 @@ export default function ProfilePage() {
                 {user.name.charAt(0).toUpperCase()}
               </div>
             )}
-            <div>
-              <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-                <span>{user.name}</span>
-                {stats.currentStreak >= 7 && (
-                  <span className="text-[10px] bg-orange-950/80 text-orange-300 border border-orange-800 px-2 py-0.5 rounded-full font-bold">
-                    PRO
+            <div className="min-w-0">
+              {isEditingName ? (
+                <form onSubmit={handleSaveName} className="flex flex-col gap-1.5 my-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={(e) => {
+                        setNameInput(e.target.value);
+                        if (nameError) setNameError(null);
+                      }}
+                      maxLength={25}
+                      autoFocus
+                      disabled={isSavingName}
+                      placeholder="Display Name"
+                      className="bg-slate-950 border border-amber-500/70 focus:border-amber-400 rounded-lg px-2.5 py-1 text-sm font-bold text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-400/30 w-36 sm:w-52"
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSavingName || !nameInput.trim() || nameInput.trim() === user.name}
+                      className="min-h-[32px] min-w-[32px] p-1.5 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold rounded-lg transition-all active:scale-95 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                      title="Save name"
+                      aria-label="Save name"
+                    >
+                      {isSavingName ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingName(false);
+                        setNameError(null);
+                      }}
+                      disabled={isSavingName}
+                      className="min-h-[32px] min-w-[32px] p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 rounded-lg transition-all flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                      title="Cancel"
+                      aria-label="Cancel editing"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {nameError && (
+                    <span className="text-[11px] text-rose-400 font-medium">{nameError}</span>
+                  )}
+                </form>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <h1 className="text-lg font-bold text-slate-100 flex items-center gap-2 truncate">
+                    <span className="truncate">{user.name}</span>
+                    {stats.currentStreak >= 7 && (
+                      <span className="text-[10px] bg-orange-950/80 text-orange-300 border border-orange-800 px-2 py-0.5 rounded-full font-bold flex-shrink-0">
+                        PRO
+                      </span>
+                    )}
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={handleStartEditName}
+                    className="p-1 rounded-md text-slate-400 hover:text-amber-400 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 flex-shrink-0"
+                    title="Change display name"
+                    aria-label="Change display name"
+                  >
+                    <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-xs text-slate-400 truncate">{user.email}</span>
+                {nameSuccess && (
+                  <span className="text-[11px] text-emerald-400 font-bold animate-in fade-in">
+                    ✓ Updated!
                   </span>
                 )}
-              </h1>
-              <span className="text-xs text-slate-400">{user.email}</span>
+              </div>
             </div>
           </div>
 

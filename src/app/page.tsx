@@ -28,6 +28,7 @@ import FeedbackModal from "@/components/FeedbackModal";
 import NextGameCountdown from "@/components/NextGameCountdown";
 import ShareModal from "@/components/ShareModal";
 import ArchiveModal from "@/components/ArchiveModal";
+import GuestNameModal from "@/components/GuestNameModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 
@@ -79,6 +80,12 @@ export default function Home() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [isGuestNameModalOpen, setIsGuestNameModalOpen] = useState(false);
+  const [pendingWinData, setPendingWinData] = useState<{
+    cluesUsed: number;
+    score: number;
+    gameDate: string;
+  } | null>(null);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showRemainingClues, setShowRemainingClues] = useState(false);
@@ -317,9 +324,14 @@ export default function Home() {
     setUser(null);
   };
 
-  const syncScoreToDatabase = async (cluesUsed: number, score: number, targetDate?: string) => {
+  const syncScoreToDatabase = async (
+    cluesUsed: number,
+    score: number,
+    targetDate?: string,
+    customAnonName?: string
+  ) => {
     try {
-      let anonName = localStorage.getItem("40clues_anon_name");
+      let anonName = customAnonName || localStorage.getItem("40clues_anon_name");
       if (!anonName) {
         anonName = `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
         localStorage.setItem("40clues_anon_name", anonName);
@@ -338,6 +350,42 @@ export default function Home() {
     } catch (err) {
       console.error("Failed to sync score:", err);
     }
+  };
+
+  const handleGuestNameSubmit = async (customName: string) => {
+    setIsGuestNameModalOpen(false);
+    const win = pendingWinData || {
+      cluesUsed: clueNumber,
+      score: currentPotentialScore,
+      gameDate,
+    };
+    const trimmed = customName.trim();
+    const finalName =
+      trimmed ||
+      localStorage.getItem("40clues_anon_name") ||
+      `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+    localStorage.setItem("40clues_anon_name", finalName);
+
+    await syncScoreToDatabase(win.cluesUsed, win.score, win.gameDate, finalName);
+    setPendingWinData(null);
+    setMessage(`Score registered on leaderboard as "${finalName}"!`);
+    setIsLeaderboardOpen(true);
+  };
+
+  const handleGuestNameSkip = async () => {
+    setIsGuestNameModalOpen(false);
+    const win = pendingWinData || {
+      cluesUsed: clueNumber,
+      score: currentPotentialScore,
+      gameDate,
+    };
+    let anonName = localStorage.getItem("40clues_anon_name");
+    if (!anonName) {
+      anonName = `Cinephile_${Math.floor(1000 + Math.random() * 9000)}`;
+      localStorage.setItem("40clues_anon_name", anonName);
+    }
+    await syncScoreToDatabase(win.cluesUsed, win.score, win.gameDate, anonName);
+    setPendingWinData(null);
   };
 
   const saveProgress = (
@@ -537,7 +585,17 @@ export default function Home() {
         confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
         updateStreakOnWin();
         saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol, rest);
-        syncScoreToDatabase(clueNumber, currentPotentialScore);
+
+        if (user) {
+          syncScoreToDatabase(clueNumber, currentPotentialScore);
+        } else {
+          setPendingWinData({
+            cluesUsed: clueNumber,
+            score: currentPotentialScore,
+            gameDate,
+          });
+          setIsGuestNameModalOpen(true);
+        }
       } else {
         triggerErrorShake();
         const newAttempts = [selectedTitle, ...attempts];
@@ -1373,6 +1431,13 @@ export default function Home() {
         movieYear={solution?.year || ""}
         hasWon={hasWon}
         gameDate={gameDate}
+      />
+      <GuestNameModal
+        isOpen={isGuestNameModalOpen}
+        onClose={handleGuestNameSkip}
+        onSubmitName={handleGuestNameSubmit}
+        score={pendingWinData?.score ?? currentPotentialScore}
+        cluesUsed={pendingWinData?.cluesUsed ?? clueNumber}
       />
     </main>
   );
