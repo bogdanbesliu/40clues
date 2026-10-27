@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect } from "react";
-import Link from "next/link";
 import {
   X,
   HelpCircle,
@@ -9,11 +8,6 @@ import {
   Sparkles,
   Trophy,
   Flame,
-  Calendar,
-  Award,
-  Crown,
-  Check,
-  User,
 } from "lucide-react";
 
 interface HowToPlayModalProps {
@@ -26,8 +20,6 @@ interface HowToPlayModalProps {
 export default function HowToPlayModal({
   isOpen,
   onClose,
-  isLoggedIn = false,
-  onLogin,
 }: HowToPlayModalProps) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -65,7 +57,7 @@ export default function HowToPlayModal({
               <h2 id="how-to-play-title" className="text-lg sm:text-xl font-black text-slate-100">
                 How to Play 40Clues
               </h2>
-              <p className="text-[11px] text-slate-400">Rules, scoring, and member privileges</p>
+              <p className="text-[11px] text-slate-400">Rules, scoring, and lifelines</p>
             </div>
           </div>
           <button
@@ -115,106 +107,10 @@ export default function HowToPlayModal({
           </div>
         </div>
 
-        {/* Member Privileges Card */}
-        <section
-          aria-labelledby="member-benefits-heading"
-          className="bg-slate-950/80 border border-amber-500/30 rounded-xl p-4 flex flex-col gap-3"
-        >
-          <div className="flex items-center justify-between">
-            <h3
-              id="member-benefits-heading"
-              className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-400"
-            >
-              {isLoggedIn ? (
-                <>
-                  <Crown className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                  <span>Your Member Privileges</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                  <span>Why Sign In? Member Privileges</span>
-                </>
-              )}
-            </h3>
-          </div>
-
-          <p className="text-[11px] text-slate-400">
-            {isLoggedIn
-              ? "As an authenticated Cinephile, all premium features and history tracking are active on your account:"
-              : "While guests can play today's live daily puzzle, signing in with Google unlocks the full 40Clues experience:"}
-          </p>
-
-          <ul className="grid grid-cols-1 gap-2.5 text-xs text-slate-300">
-            <li className="flex items-start gap-2.5">
-              <Trophy className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
-              <div>
-                <strong className="text-slate-100 font-semibold">Global Leaderboards:</strong>{" "}
-                {isLoggedIn
-                  ? "Your daily scores automatically count towards all-time rankings."
-                  : "Compete on all-time rankings alongside film buffs worldwide."}
-              </div>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <Calendar className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
-              <div>
-                <strong className="text-slate-100 font-semibold">Puzzle Archive Access:</strong>{" "}
-                {isLoggedIn
-                  ? "Unlimited access to browse, play, and solve any past daily mystery movie."
-                  : "Unlock and replay every previous daily cinema mystery at your own pace."}
-              </div>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <Award className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
-              <div>
-                <strong className="text-slate-100 font-semibold">Badges & Achievements:</strong>{" "}
-                {isLoggedIn
-                  ? "Earn and showcase detective badges like Cinephile Psychic, Speed Demon, and Clutch."
-                  : "Unlock achievements as your movie deduction skills sharpen over time."}
-              </div>
-            </li>
-            <li className="flex items-start gap-2.5">
-              <Check className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
-              <div>
-                <strong className="text-slate-100 font-semibold">Career Stats & Cloud Sync:</strong>{" "}
-                {isLoggedIn
-                  ? "Your stats, streaks, and solved movie catalog are safely preserved across all devices."
-                  : "Track your completion history, guess distribution, and streaks on any device."}
-              </div>
-            </li>
-          </ul>
-
-          {/* Conditional action: View Profile for logged-in, Sign in for guests */}
-          {isLoggedIn ? (
-            <Link
-              href="/profile"
-              onClick={onClose}
-              className="mt-1 w-full min-h-[40px] px-4 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-700/80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <span>View My Profile & Badges</span>
-              <span aria-hidden="true">→</span>
-            </Link>
-          ) : (
-            onLogin && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onLogin();
-                }}
-                className="mt-1 w-full min-h-[42px] px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-              >
-                <User className="w-3.5 h-3.5 text-slate-950" aria-hidden="true" />
-                <span>Sign in with Google</span>
-              </button>
-            )
-          )}
-        </section>
-
         {/* Dismiss Button */}
         <button
           onClick={onClose}
-          className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl transition-all shadow-md active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 text-xs"
+          className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl transition-all shadow-md active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 text-xs mt-1"
         >
           Got it, let's play!
         </button>

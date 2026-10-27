@@ -39,6 +39,13 @@ export default function LeaderboardModal({
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
+  // Always reset to Daily Leaderboard as default whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab("daily");
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
 
