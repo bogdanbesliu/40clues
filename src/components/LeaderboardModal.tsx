@@ -80,7 +80,15 @@ export default function LeaderboardModal({
 
         const res = await fetch(endpoint, { headers });
         const data = await res.json();
-        const topEntries = (data.leaderboard || []).slice(0, 20);
+        const rawEntries: LeaderboardEntry[] = data.leaderboard || [];
+        const topEntries = rawEntries
+          .filter((entry) => {
+            const name = (entry.profiles?.display_name || entry.anon_name || "").toLowerCase();
+            return !["bogdan besliu", "bogdanbesliu", "bogdan"].some((ignored) =>
+              name === ignored || name.includes(ignored)
+            );
+          })
+          .slice(0, 20);
         setEntries(topEntries);
       } catch {
         setEntries([]);
