@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -14,8 +14,12 @@ import {
   Film,
   ChevronDown,
   ChevronUp,
+  Fingerprint,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowserClient, isPasskeySupported } from "@/lib/supabaseBrowser";
+import PasskeyManager from "@/components/PasskeyManager";
 
 interface BadgeItem {
   id: string;
@@ -63,12 +67,14 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const [showAllBadges, setShowAllBadges] = useState(false);
+  const [isPasskeySupportedState, setIsPasskeySupportedState] = useState(false);
+  const [isPasskeySigningIn, setIsPasskeySigningIn] = useState(false);
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
 
-  const supabase = useMemo(() => {
-    return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+  const supabase = getSupabaseBrowserClient();
+
+  useEffect(() => {
+    setIsPasskeySupportedState(isPasskeySupported());
   }, []);
 
   const loadProfile = async (token?: string) => {
@@ -157,6 +163,50 @@ export default function ProfilePage() {
     });
   };
 
+  const handlePasskeyLogin = async () => {
+    setIsPasskeySigningIn(true);
+    setPasskeyError(null);
+    try {
+      const { data: authData, error } = await supabase.auth.signInWithPasskey();
+      if (error) {
+        const msg = error.message || "";
+        if (
+          error.name === "NotAllowedError" ||
+          error.name === "AbortError" ||
+          msg.toLowerCase().includes("abort") ||
+          msg.toLowerCase().includes("cancel")
+        ) {
+          setIsPasskeySigningIn(false);
+          return;
+        }
+        setPasskeyError(
+          msg.toLowerCase().includes("not enabled")
+            ? "Passkeys are not yet enabled in the Supabase Dashboard. Sign in with Google first."
+            : error.message || "Failed to sign in with passkey."
+        );
+        setIsPasskeySigningIn(false);
+        return;
+      }
+      if (authData?.session?.access_token) {
+        setIsGuest(false);
+        await loadProfile(authData.session.access_token);
+      }
+    } catch (err: unknown) {
+      const error = err as { name?: string; message?: string };
+      if (
+        error.name === "NotAllowedError" ||
+        error.name === "AbortError" ||
+        error.message?.toLowerCase().includes("cancel")
+      ) {
+        setIsPasskeySigningIn(false);
+        return;
+      }
+      setPasskeyError(error.message || "Passkey authentication failed.");
+    } finally {
+      setIsPasskeySigningIn(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.href = "/";
@@ -184,19 +234,50 @@ export default function ProfilePage() {
           <div>
             <h1 className="text-2xl font-black text-slate-100">Detective Profile</h1>
             <p className="text-xs text-slate-400 mt-2 leading-relaxed">
-              Sign in with Google to protect your daily streaks, unlock badges, and track your
+              Sign in to protect your daily streaks, unlock badges, and track your
               all-time cinema deduction history.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="w-full min-h-[48px] bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold px-6 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-lg"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>Sign in with Google</span>
-          </button>
+          {passkeyError && (
+            <div className="w-full p-3 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs flex items-start gap-2.5 text-left">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{passkeyError}</span>
+            </div>
+          )}
+
+          <div className="w-full flex flex-col gap-2.5">
+            {isPasskeySupportedState && (
+              <button
+                type="button"
+                onClick={handlePasskeyLogin}
+                disabled={isPasskeySigningIn}
+                className="w-full min-h-[48px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold px-6 rounded-xl flex items-center justify-center gap-2.5 active:scale-95 transition-all shadow-lg disabled:opacity-50"
+              >
+                {isPasskeySigningIn ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" aria-hidden="true" />
+                    <span>Verifying Passkey...</span>
+                  </>
+                ) : (
+                  <>
+                    <Fingerprint className="w-5 h-5 text-slate-950" aria-hidden="true" />
+                    <span>Sign in with Passkey</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isPasskeySigningIn}
+              className="w-full min-h-[48px] bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-slate-600 font-bold px-6 rounded-xl flex items-center justify-center gap-2.5 active:scale-95 transition-all shadow-sm disabled:opacity-50"
+            >
+              <LogIn className="w-4 h-4 text-amber-400" />
+              <span>Continue with Google</span>
+            </button>
+          </div>
 
           <Link
             href="/"
@@ -418,6 +499,9 @@ export default function ProfilePage() {
             })}
           </div>
         </section>
+
+        {/* Biometrics & Passkeys */}
+        <PasskeyManager />
 
         {/* Game History List */}
         <section aria-labelledby="history-heading">

@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowLeft, Calendar, Film, CheckCircle2, X, Play, Lock, User } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
+import AuthModal from "@/components/AuthModal";
 
 interface ArchiveGameItem {
   id: string;
@@ -27,11 +28,9 @@ export default function ArchivePage() {
   const [isAuthRequired, setIsAuthRequired] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [localStatuses, setLocalStatuses] = useState<Record<string, LocalGameStatus>>({});
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseBrowserClient();
 
   const handleGoogleLogin = async () => {
     const isLocal =
@@ -46,78 +45,93 @@ export default function ArchivePage() {
     });
   };
 
-  useEffect(() => {
-    const fetchArchive = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+  const fetchArchive = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-        if (!session?.user) {
-          setIsAuthRequired(true);
-          setIsLoading(false);
-          return;
-        }
+      if (!session?.user) {
+        setIsAuthRequired(true);
+        setIsLoading(false);
+        return;
+      }
 
-        const headers: Record<string, string> = {
-          Authorization: `Bearer ${session.access_token}`,
-        };
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${session.access_token}`,
+      };
 
-        const res = await fetch("/api/games/archive", { headers });
-        const data = await res.json();
+      const res = await fetch("/api/games/archive", { headers });
+      const data = await res.json();
 
-        if (res.status === 401 || data.isGuest) {
-          setIsAuthRequired(true);
-          setIsLoading(false);
-          return;
-        }
+      if (res.status === 401 || data.isGuest) {
+        setIsAuthRequired(true);
+        setIsLoading(false);
+        return;
+      }
 
-        if (!res.ok) {
-          setError(data.error || "Failed to load archive");
-          return;
-        }
+      if (!res.ok) {
+        setError(data.error || "Failed to load archive");
+        return;
+      }
 
-        const items: ArchiveGameItem[] = data.games || [];
-        setGames(items);
+      setIsAuthRequired(false);
+      const items: ArchiveGameItem[] = data.games || [];
+      setGames(items);
 
-        const today = new Date().toISOString().split("T")[0];
-        const statuses: Record<string, LocalGameStatus> = {};
+      const today = new Date().toISOString().split("T")[0];
+      const statuses: Record<string, LocalGameStatus> = {};
 
-        items.forEach((item) => {
-          const isToday = item.game_date === today;
-          const raw = localStorage.getItem(`40clues_progress_${item.game_date}`);
-          if (raw) {
-            try {
-              const parsed = JSON.parse(raw);
-              statuses[item.game_date] = {
-                hasWon: !!parsed.hasWon,
-                hasLost: !!parsed.hasLost,
-                score: parsed.hasWon ? Math.max(25, 1000 - (parsed.scorePenalty || 0)) : 0,
-                cluesUsed: parsed.clueNumber || 1,
-                title: parsed.solution?.title,
-                year: parsed.solution?.year,
-                isToday,
-              };
-            } catch {
-              statuses[item.game_date] = { hasWon: false, hasLost: false, isToday };
-            }
-          } else {
+      items.forEach((item) => {
+        const isToday = item.game_date === today;
+        const raw = localStorage.getItem(`40clues_progress_${item.game_date}`);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            statuses[item.game_date] = {
+              hasWon: !!parsed.hasWon,
+              hasLost: !!parsed.hasLost,
+              score: parsed.hasWon ? Math.max(25, 1000 - (parsed.scorePenalty || 0)) : 0,
+              cluesUsed: parsed.clueNumber || 1,
+              title: parsed.solution?.title,
+              year: parsed.solution?.year,
+              isToday,
+            };
+          } catch {
             statuses[item.game_date] = { hasWon: false, hasLost: false, isToday };
           }
-        });
+        } else {
+          statuses[item.game_date] = { hasWon: false, hasLost: false, isToday };
+        }
+      });
 
-        setLocalStatuses(statuses);
-      } catch {
-        setError("Network error fetching archive.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setLocalStatuses(statuses);
+    } catch {
+      setError("Network error fetching archive.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [supabase]);
 
+  useEffect(() => {
     fetchArchive();
-  }, []);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        fetchArchive();
+      } else {
+        setIsAuthRequired(true);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchArchive, supabase]);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -174,17 +188,17 @@ export default function ArchivePage() {
                 Members-Only Puzzle Archive
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Guest players can only solve today's live puzzle. Sign in with Google to unlock access to all previous daily puzzles, track your archive completion, and climb the Global Leaderboards!
+                Guest players can only solve today's live puzzle. Sign in to unlock access to all previous daily puzzles, track your archive completion, and climb the Global Leaderboards!
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-3 mt-2 w-full max-w-xs">
               <button
                 type="button"
-                onClick={handleGoogleLogin}
+                onClick={() => setIsAuthModalOpen(true)}
                 className="w-full min-h-[46px] px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
                 <User className="w-4 h-4 text-slate-950" aria-hidden="true" />
-                <span>Sign in with Google</span>
+                <span>Sign In to Unlock</span>
               </button>
               <Link
                 href="/"
@@ -300,6 +314,13 @@ export default function ArchivePage() {
           © 40Clues 2026 • Cinema Deduction Game
         </footer>
       </div>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        redirectTo="/archive"
+        onSuccess={fetchArchive}
+      />
     </main>
   );
 }

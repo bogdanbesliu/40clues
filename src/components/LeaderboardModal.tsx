@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { X, Trophy, Loader2, User, Globe, Clock, Lock, LogIn } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
+import { getSupabaseBrowserClient } from "@/lib/supabaseBrowser";
 
 interface LeaderboardEntry {
   score: number;
@@ -34,10 +34,7 @@ export default function LeaderboardModal({
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabase = getSupabaseBrowserClient();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -186,7 +183,7 @@ export default function LeaderboardModal({
                 className="w-full max-w-xs min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
               >
                 <LogIn className="w-4 h-4" aria-hidden="true" />
-                <span>Sign in with Google</span>
+                <span>Sign In to View Rankings</span>
               </button>
             )}
           </div>
