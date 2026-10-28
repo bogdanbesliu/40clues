@@ -75,11 +75,24 @@ export async function POST(request: Request) {
         .eq("id", user.id)
         .maybeSingle();
 
+      let validatedAnonName: string | null = null;
+      if (
+        anonName &&
+        typeof anonName === "string" &&
+        !anonName.startsWith("Cinephile_")
+      ) {
+        const candidate = anonName.trim().slice(0, 25);
+        if (candidate.length >= 2) {
+          const check = await isNameForbidden(candidate);
+          if (!check.isForbidden) {
+            validatedAnonName = candidate;
+          }
+        }
+      }
+
       const displayName =
         existingProfile?.display_name ||
-        (anonName && typeof anonName === "string" && !anonName.startsWith("Cinephile_") && !isNameForbidden(anonName)
-          ? anonName.trim().slice(0, 25)
-          : null) ||
+        validatedAnonName ||
         user.user_metadata?.full_name ||
         user.user_metadata?.name ||
         user.email?.split("@")[0] ||
