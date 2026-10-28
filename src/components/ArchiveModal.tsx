@@ -204,7 +204,7 @@ export default function ArchiveModal({
                   Members-Only Archive
                 </h3>
                 <p className="text-xs text-slate-400 leading-relaxed">
-                  Guests can only play today's live puzzle. Sign in with Google to unlock past puzzles, track your completion history, and claim a spot on the Global Leaderboards!
+                  Guests can only play today's live puzzle. Sign in with Google to unlock past puzzles, track your completion history, and claim a spot on the Global Leaderboards — membership is 100% free!
                 </p>
               </div>
               <button

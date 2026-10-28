@@ -174,7 +174,7 @@ export default function ArchivePage() {
                 Members-Only Puzzle Archive
               </h2>
               <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
-                Guest players can only solve today's live puzzle. Sign in with Google to unlock access to all previous daily puzzles, track your archive completion, and climb the Global Leaderboards!
+                Guest players can only solve today's live puzzle. Sign in with Google to unlock access to all previous daily puzzles, track your archive completion, and climb the Global Leaderboards — membership is 100% free!
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-3 mt-2 w-full max-w-xs">

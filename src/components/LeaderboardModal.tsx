@@ -188,7 +188,7 @@ export default function LeaderboardModal({
                 Members Only Feature
               </h3>
               <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-                Global All-Time Leaderboards track cumulative scores and career streaks across all daily mysteries. Sign in to view rankings and claim your spot!
+                Global All-Time Leaderboards track cumulative scores and career streaks across all daily mysteries. Sign in to view rankings and claim your spot — membership is 100% free!
               </p>
             </div>
             {onLogin && (

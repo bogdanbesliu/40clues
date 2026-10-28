@@ -206,7 +206,7 @@ export default function Home() {
       if (!currentUser && targetDate !== today) {
         window.history.replaceState({}, "", "/");
         targetDate = today;
-        setMessage("Historical puzzles are members-only. Loaded today's puzzle!");
+        setMessage("Historical puzzles are free for members. Loaded today's puzzle!");
       }
 
       const savedStreak = parseInt(localStorage.getItem("40clues_streak") || "0", 10);
@@ -885,7 +885,7 @@ export default function Home() {
                         Puzzle Archive
                       </span>
                       <p className="text-[10px] text-slate-400">
-                        {user ? "Play past cinema mysteries" : "Members only • Past puzzles"}
+                        {user ? "Play past cinema mysteries" : "Free for members • Past puzzles"}
                       </p>
                     </div>
                   </div>
