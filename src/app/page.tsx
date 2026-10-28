@@ -368,9 +368,17 @@ export default function Home() {
         localStorage.setItem("40clues_anon_name", anonName);
       }
 
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       await fetch("/api/score", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           gameDate: targetDate || gameDate,
           cluesUsed,
@@ -1487,6 +1495,8 @@ export default function Home() {
         onSubmitName={handleGuestNameSubmit}
         score={pendingWinData?.score ?? currentPotentialScore}
         cluesUsed={pendingWinData?.cluesUsed ?? clueNumber}
+        streak={streak}
+        onLogin={handleGoogleLogin}
       />
     </main>
   );

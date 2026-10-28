@@ -77,6 +77,9 @@ export async function POST(request: Request) {
 
       const displayName =
         existingProfile?.display_name ||
+        (anonName && typeof anonName === "string" && !anonName.startsWith("Cinephile_") && !isNameForbidden(anonName)
+          ? anonName.trim().slice(0, 25)
+          : null) ||
         user.user_metadata?.full_name ||
         user.user_metadata?.name ||
         user.email?.split("@")[0] ||
