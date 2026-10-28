@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Calendar, Play, CheckCircle2, Film, Lock, User } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -42,6 +42,8 @@ export default function ArchiveModal({
   const [error, setError] = useState<string | null>(null);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
   const [localStatuses, setLocalStatuses] = useState<Record<string, LocalGameStatus>>({});
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -123,21 +125,46 @@ export default function ArchiveModal({
     };
 
     fetchArchive();
-  }, [isOpen, isLoggedIn]);
+  }, [isOpen, isLoggedIn, supabase]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
+    previousActiveElement.current = document.activeElement as HTMLElement;
+    document.body.style.overflow = "hidden";
+
+    const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable && focusable.length > 0) {
+      focusable[0].focus();
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && focusable && focusable.length > 0) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
 
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
-    }
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.body.style.overflow = "";
       window.removeEventListener("keydown", handleKeyDown);
+      previousActiveElement.current?.focus();
     };
   }, [isOpen, onClose]);
 
@@ -166,7 +193,10 @@ export default function ArchiveModal({
       aria-labelledby="archive-modal-title"
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
     >
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
+      <div
+        ref={modalRef}
+        className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[85vh]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -186,7 +216,7 @@ export default function ArchiveModal({
           <button
             onClick={onClose}
             aria-label="Close archive modal"
-            className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           >
             <X className="w-5 h-5" aria-hidden="true" />
           </button>
@@ -270,12 +300,12 @@ export default function ArchiveModal({
                           {formatDate(g.game_date)}
                         </span>
                         {isToday && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                          <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300">
                             Today
                           </span>
                         )}
                         {isSelected && !isToday && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
+                          <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-slate-300">
                             Active
                           </span>
                         )}
@@ -306,7 +336,7 @@ export default function ArchiveModal({
                       onSelectDate(g.game_date);
                       onClose();
                     }}
-                    className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all flex-shrink-0 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+                    className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all flex-shrink-0 active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
                       isSelected
                         ? "bg-slate-800 text-slate-300 border border-slate-700"
                         : status?.hasWon || status?.hasLost

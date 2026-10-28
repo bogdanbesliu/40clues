@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { X, Trophy, Loader2, User, Globe, Clock, Lock, LogIn } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 
@@ -33,6 +33,8 @@ export default function LeaderboardModal({
   const [activeTab, setActiveTab] = useState<"daily" | "global">("daily");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -49,11 +51,35 @@ export default function LeaderboardModal({
   useEffect(() => {
     if (!isOpen) return;
 
+    previousActiveElement.current = document.activeElement as HTMLElement;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    // Auto-focus first focusable element
+    const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable && focusable.length > 0) {
+      focusable[0].focus();
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && focusable && focusable.length > 0) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
 
@@ -63,6 +89,7 @@ export default function LeaderboardModal({
       return () => {
         document.body.style.overflow = originalOverflow;
         window.removeEventListener("keydown", handleKeyDown);
+        previousActiveElement.current?.focus();
       };
     }
 
@@ -109,8 +136,19 @@ export default function LeaderboardModal({
     return () => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      previousActiveElement.current?.focus();
     };
   }, [isOpen, gameDate, activeTab, isLoggedIn, onClose, supabase]);
+
+  const handleTablistKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      const nextTab = activeTab === "daily" ? "global" : "daily";
+      setActiveTab(nextTab);
+      const targetId = nextTab === "daily" ? "tab-daily" : "tab-global";
+      document.getElementById(targetId)?.focus();
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -121,11 +159,14 @@ export default function LeaderboardModal({
       aria-labelledby="leaderboard-modal-title"
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
     >
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative flex flex-col max-h-[85vh]">
+      <div
+        ref={modalRef}
+        className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl relative flex flex-col max-h-[85vh]"
+      >
         <button
           onClick={onClose}
           aria-label="Close leaderboard modal"
-          className="absolute top-4 right-4 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           <X className="w-5 h-5" aria-hidden="true" />
         </button>
@@ -135,14 +176,20 @@ export default function LeaderboardModal({
           <h2 id="leaderboard-modal-title" className="text-lg font-extrabold text-slate-100">Leaderboards</h2>
         </div>
 
-        {/* View switcher: Daily Leaderboard vs Global Leaderboards */}
-        <div role="tablist" aria-label="Leaderboard views" className="flex items-center gap-2 mb-5">
+        {/* View switcher: Daily Leaderboard vs Global Leaderboards with ARIA keyboard support */}
+        <div
+          role="tablist"
+          aria-label="Leaderboard views"
+          onKeyDown={handleTablistKeyDown}
+          className="flex items-center gap-2 mb-5"
+        >
           <button
             type="button"
             role="tab"
             id="tab-daily"
             aria-selected={activeTab === "daily"}
             aria-controls="leaderboard-content"
+            tabIndex={activeTab === "daily" ? 0 : -1}
             onClick={() => setActiveTab("daily")}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${activeTab === "daily"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm"
@@ -159,6 +206,7 @@ export default function LeaderboardModal({
             id="tab-global"
             aria-selected={activeTab === "global"}
             aria-controls="leaderboard-content"
+            tabIndex={activeTab === "global" ? 0 : -1}
             onClick={() => setActiveTab("global")}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${activeTab === "global"
                 ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 shadow-sm"

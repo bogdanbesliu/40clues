@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import {
   Sparkles,
@@ -96,6 +96,8 @@ export default function Home() {
   const [isShakeActive, setIsShakeActive] = useState(false);
   const [isClueFading, setIsClueFading] = useState(false);
   const [animatedScore, setAnimatedScore] = useState<number>(0);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -144,6 +146,13 @@ export default function Home() {
 
   useEffect(() => {
     if (hasWon) {
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (prefersReducedMotion) {
+        setAnimatedScore(currentPotentialScore);
+        return;
+      }
       let current = 0;
       const step = Math.ceil(currentPotentialScore / 35);
       const timer = setInterval(() => {
@@ -160,19 +169,41 @@ export default function Home() {
   }, [hasWon, currentPotentialScore]);
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isMobileMenuOpen) {
-        setIsMobileMenuOpen(false);
-      }
-    };
     if (isMobileMenuOpen) {
       document.body.style.overflow = "hidden";
+      const focusable = mobileMenuRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable && focusable.length > 0) {
+        focusable[0].focus();
+      }
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          setIsMobileMenuOpen(false);
+          hamburgerBtnRef.current?.focus();
+          return;
+        }
+        if (e.key === "Tab" && focusable && focusable.length > 0) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      };
+
       window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = "";
+        window.removeEventListener("keydown", handleKeyDown);
+        hamburgerBtnRef.current?.focus();
+      };
     }
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
   }, [isMobileMenuOpen]);
 
   const checkAndSyncPendingLocalScore = async (_userId: string) => {
@@ -582,7 +613,12 @@ export default function Home() {
         const rest = data.remainingClues || [];
         setRemainingClues(rest);
         setMessage("Spot on! Brilliant deduction!");
-        confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
+        const prefersReducedMotion =
+          typeof window !== "undefined" &&
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (!prefersReducedMotion) {
+          confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
+        }
         updateStreakOnWin();
         saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol, rest);
 
@@ -651,22 +687,25 @@ export default function Home() {
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
             40Clues
           </h1>
-          <p className="text-[10px] sm:text-[11px] uppercase tracking-widest text-slate-400 font-bold mt-0.5">
+          <p className="text-[11px] sm:text-xs uppercase tracking-widest text-slate-300 font-bold mt-0.5">
             Cinema Edition
           </p>
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
           {streak > 0 && (
-            <div className="h-[40px] px-3 flex items-center justify-center gap-1.5 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 rounded-full shadow-sm">
-              <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" />
+            <div
+              aria-label={`${streak} day win streak`}
+              className="h-[44px] px-3 flex items-center justify-center gap-1.5 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 rounded-full shadow-sm"
+            >
+              <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" aria-hidden="true" />
               <span>{streak}</span>
             </div>
           )}
 
           <button
             onClick={handleOpenHowToPlay}
-            className="relative min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             title="How to Play"
             aria-label="How to Play"
           >
@@ -681,7 +720,7 @@ export default function Home() {
 
           <button
             onClick={() => setIsLeaderboardOpen(true)}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             title="Leaderboards"
             aria-label="Leaderboards"
           >
@@ -726,7 +765,7 @@ export default function Home() {
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="min-h-[36px] min-w-[36px] flex items-center justify-center text-slate-400 hover:text-rose-400 active:scale-95 rounded-lg border border-slate-800 transition-all p-1.5 hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-rose-400 active:scale-95 rounded-lg border border-slate-800 transition-all p-2 hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                   title="Sign Out"
                   aria-label="Sign Out"
                 >
@@ -746,9 +785,10 @@ export default function Home() {
 
           {/* Mobile Only: Hamburger Menu Button */}
           <button
+            ref={hamburgerBtnRef}
             type="button"
             onClick={() => setIsMobileMenuOpen(true)}
-            className="sm:hidden min-h-[40px] min-w-[40px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             title="Open Menu"
             aria-label="Open Navigation Menu"
             aria-expanded={isMobileMenuOpen}
@@ -768,6 +808,7 @@ export default function Home() {
           onClick={() => setIsMobileMenuOpen(false)}
         >
           <div
+            ref={mobileMenuRef}
             className="bg-slate-900 border-l border-slate-800 w-full max-w-xs h-full p-5 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -784,7 +825,7 @@ export default function Home() {
                 </div>
                 <button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="min-h-[38px] min-w-[38px] flex items-center justify-center text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   aria-label="Close menu"
                 >
                   <X className="w-5 h-5" aria-hidden="true" />
@@ -1067,24 +1108,28 @@ export default function Home() {
               </span>
             </div>
             <p
-              aria-live="polite"
               className={`text-base sm:text-xl font-medium text-slate-100 leading-relaxed italic my-auto transition-all duration-200 ${isClueFading ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0"
                 }`}
             >
               "{unlockedClues[unlockedClues.length - 1]}"
             </p>
-            <div className="mt-3 text-[11px] text-slate-300 flex items-center justify-between">
+            <div className="mt-3 text-xs text-slate-300 flex items-center justify-between">
               <span>{attempts.length} attempts</span>
               <span className="text-amber-400 font-semibold">40 total clues</span>
             </div>
           </section>
         )}
 
+        {/* Consolidated Screen Reader Live Status Announcer */}
+        <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {message && `${message}. `}
+          {unlockedClues.length > 0 && `Clue ${clueNumber} of ${totalClues}: ${unlockedClues[unlockedClues.length - 1]}`}
+        </div>
+
         {/* Live Status Toast */}
         {message && (
           <div
-            role="status"
-            aria-live="polite"
+            aria-hidden="true"
             className={`p-3 rounded-xl text-xs sm:text-sm font-semibold text-center transition-all shadow-md ${hasWon
               ? "bg-emerald-950/90 border border-emerald-600/80 text-emerald-200"
               : hasLost
@@ -1101,7 +1146,7 @@ export default function Home() {
           <div className="flex flex-col gap-2.5">
             {/* Tactical Lifelines */}
             <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs flex-wrap">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                 Tactical Intel (-50 pts):
               </span>
               <div className="flex items-center gap-2">
@@ -1117,7 +1162,7 @@ export default function Home() {
                     disabled={isLoading || isSubmitting || isLifelineLoading !== null}
                     aria-label="Unlock Release Decade hint (-50 points)"
                     title="Reveal release decade (-50 pts penalty)"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 transition-all font-medium text-xs disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    className="inline-flex items-center gap-1 min-h-[38px] px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 transition-all font-medium text-xs disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   >
                     {isLifelineLoading === "decade" ? (
                       <span className="animate-spin text-amber-400">⏳</span>
@@ -1139,7 +1184,7 @@ export default function Home() {
                     disabled={isLoading || isSubmitting || isLifelineLoading !== null}
                     aria-label="Unlock Primary Genre hint (-50 points)"
                     title="Reveal primary genre (-50 pts penalty)"
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 transition-all font-medium text-xs disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                    className="inline-flex items-center gap-1 min-h-[38px] px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700 hover:border-amber-500/50 text-slate-300 hover:text-amber-300 transition-all font-medium text-xs disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                   >
                     {isLifelineLoading === "genre" ? (
                       <span className="animate-spin text-amber-400">⏳</span>
@@ -1173,9 +1218,12 @@ export default function Home() {
                 }
                 className="min-h-[48px] px-3.5 bg-slate-900 hover:bg-slate-800 active:scale-95 border border-slate-700/80 rounded-xl text-slate-200 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all flex-shrink-0 disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
               >
-                <FastForward className="w-4 h-4" aria-hidden="true" />
-                <span className="hidden sm:inline">
+                <FastForward className="w-4 h-4 text-amber-400" aria-hidden="true" />
+                <span className="sm:hidden text-[11px] font-bold">
                   {hasUsedFreePass ? "Pass (-10)" : "Free Pass"}
+                </span>
+                <span className="hidden sm:inline">
+                  {hasUsedFreePass ? "Pass (-10 pts)" : "Free Pass"}
                 </span>
               </button>
             </div>
@@ -1343,17 +1391,18 @@ export default function Home() {
         {/* Incorrect Guesses (Pill format) */}
         {attempts.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
               Incorrect guesses ({attempts.length})
-            </span>
+            </h3>
             <div className="flex flex-wrap gap-1.5">
               {attempts.map((attempt, idx) => (
                 <span
                   key={idx}
-                  className="bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm"
+                  className="bg-slate-900/90 border border-slate-800 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-300 flex items-center gap-1.5 shadow-sm"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500" aria-hidden="true" />
-                  {attempt}
+                  <X className="w-3.5 h-3.5 text-rose-400 flex-shrink-0" aria-hidden="true" />
+                  <span className="sr-only">Incorrect guess: </span>
+                  <span>{attempt}</span>
                 </span>
               ))}
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Trophy, Sparkles, X, User, ArrowRight, Loader2 } from "lucide-react";
 
 interface GuestNameModalProps {
@@ -23,23 +23,49 @@ export default function GuestNameModal({
   const [name, setName] = useState(initialName);
   const [error, setError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      previousActiveElement.current = document.activeElement as HTMLElement;
       const stored = localStorage.getItem("40clues_anon_name") || "";
-      // If it's a default Cinephile_1234, let them start fresh or keep it
       setName(stored);
       setError(null);
       setIsValidating(false);
       document.body.style.overflow = "hidden";
 
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable && focusable.length > 0) {
+        focusable[0].focus();
+      }
+
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") onClose();
+        if (e.key === "Escape") {
+          onClose();
+          return;
+        }
+
+        if (e.key === "Tab" && focusable && focusable.length > 0) {
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
       };
+
       window.addEventListener("keydown", handleKeyDown);
       return () => {
         document.body.style.overflow = "";
         window.removeEventListener("keydown", handleKeyDown);
+        previousActiveElement.current?.focus();
       };
     }
   }, [isOpen, onClose]);
@@ -92,10 +118,13 @@ export default function GuestNameModal({
       aria-labelledby="guest-name-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
     >
-      <div className="bg-slate-900 border border-slate-700/90 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4 relative animate-in zoom-in-95 duration-200">
+      <div
+        ref={modalRef}
+        className="bg-slate-900 border border-slate-700/90 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl flex flex-col gap-4 relative animate-in zoom-in-95 duration-200"
+      >
         <button
           onClick={handleSkip}
-          className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-100 rounded-lg hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
           aria-label="Close modal"
         >
           <X className="w-5 h-5" aria-hidden="true" />
@@ -126,24 +155,33 @@ export default function GuestNameModal({
         {/* Name Input Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="relative">
+            <label htmlFor="guest-name-input" className="sr-only">
+              Player name for leaderboard
+            </label>
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
               <User className="w-4 h-4" aria-hidden="true" />
             </div>
             <input
+              id="guest-name-input"
               type="text"
               value={name}
               onChange={(e) => {
                 setName(e.target.value);
                 if (error) setError(null);
               }}
+              aria-invalid={!!error}
+              aria-describedby={error ? "guest-name-error" : undefined}
               placeholder="e.g. CinemaSleuth, FilmBuff99..."
               maxLength={25}
-              autoFocus
               className="w-full pl-9 pr-3 py-2.5 bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl text-sm font-semibold text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400/30 transition-all"
             />
           </div>
 
-          {error && <span className="text-[11px] text-rose-400 font-medium">{error}</span>}
+          {error && (
+            <span id="guest-name-error" role="alert" className="text-[11px] text-rose-400 font-medium">
+              {error}
+            </span>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <button

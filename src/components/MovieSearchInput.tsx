@@ -127,11 +127,13 @@ export default function MovieSearchInput({
           type="text"
           role="combobox"
           aria-expanded={isOpen}
+          aria-haspopup="listbox"
           aria-autocomplete="list"
           aria-controls="movie-suggestions-list"
           aria-activedescendant={
             selectedIndex >= 0 ? `suggestion-${suggestions[selectedIndex]?.id}` : undefined
           }
+          enterKeyHint="search"
           value={query}
           disabled={disabled}
           onChange={(e) => setQuery(e.target.value)}
@@ -143,6 +145,13 @@ export default function MovieSearchInput({
           autoCorrect="off"
           spellCheck="false"
         />
+
+        {/* Screen Reader Live Status for combobox suggestion count */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {isOpen && suggestions.length > 0
+            ? `${suggestions.length} movie suggestions available. Use arrow keys to navigate.`
+            : ""}
+        </div>
 
         <div className="absolute right-3.5 flex items-center gap-1.5 pointer-events-none">
           {isLoading ? (
@@ -172,8 +181,8 @@ export default function MovieSearchInput({
                 aria-selected={isSelected}
                 onMouseDown={(e) => {
                   e.preventDefault();
-                  handleSelect(movie.title);
                 }}
+                onClick={() => handleSelect(movie.title)}
                 className={`w-full flex items-center gap-3 px-3.5 py-2.5 cursor-pointer text-left transition-colors border-b border-slate-800/60 last:border-b-0 min-h-[48px] ${
                   isSelected
                     ? "bg-amber-500/20 text-amber-200"

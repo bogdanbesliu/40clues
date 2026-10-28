@@ -62,6 +62,50 @@ export default function ShareModal({
   const [hasCopiedImage, setHasCopiedImage] = useState(false);
   const [canMobileShare, setCanMobileShare] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousActiveElement = useRef<HTMLElement | null>(null);
+
+  // Focus trap and focus restoration
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousActiveElement.current = document.activeElement as HTMLElement;
+    document.body.style.overflow = "hidden";
+
+    const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable && focusable.length > 0) {
+      focusable[0].focus();
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+
+      if (e.key === "Tab" && focusable && focusable.length > 0) {
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+      previousActiveElement.current?.focus();
+    };
+  }, [isOpen, onClose]);
 
   // Check if browser supports Web Share API without triggering TS2774
   useEffect(() => {
@@ -186,8 +230,9 @@ export default function ShareModal({
     for (let b = 0; b < 5; b++) {
       const bx = blockStartX + b * (blockWidth + blockGap);
       const isGreen = b < greenCount;
+      // High contrast for unrevealed blocks (>3.8:1 contrast border against #020617)
       ctx.fillStyle = isGreen ? "#10B981" : "#1E293B";
-      ctx.strokeStyle = isGreen ? "#34D399" : "#334155";
+      ctx.strokeStyle = isGreen ? "#34D399" : "#64748B";
       ctx.lineWidth = 3;
       ctx.beginPath();
       drawRoundedRect(ctx, bx, blockY, blockWidth, blockWidth, 18);
@@ -318,21 +363,6 @@ export default function ShareModal({
     }
   };
 
-  const handleCopyImageToClipboard = async () => {
-    if (!imageBlob || typeof ClipboardItem === "undefined") return;
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          "image/png": imageBlob,
-        }),
-      ]);
-      setHasCopiedImage(true);
-      setTimeout(() => setHasCopiedImage(false), 2000);
-    } catch {
-      handleDownloadImage();
-    }
-  };
-
   return (
     <div
       role="dialog"
@@ -340,13 +370,16 @@ export default function ShareModal({
       aria-labelledby="share-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in"
     >
-      <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[92vh] overflow-y-auto">
+      <div
+        ref={modalRef}
+        className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl p-5 sm:p-6 shadow-2xl relative flex flex-col max-h-[92vh] overflow-y-auto"
+      >
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Close share dialog"
-          className="absolute top-4 right-4 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="absolute top-4 right-4 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
           <X className="w-5 h-5" aria-hidden="true" />
         </button>
@@ -387,9 +420,10 @@ export default function ShareModal({
           <button
             type="button"
             role="switch"
+            aria-label="Toggle movie title spoiler on result card"
             aria-checked={includeSpoiler}
             onClick={() => setIncludeSpoiler(!includeSpoiler)}
-            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
               includeSpoiler
                 ? "bg-amber-500 text-slate-950 shadow-sm"
                 : "bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700"
