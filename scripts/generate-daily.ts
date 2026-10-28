@@ -3,14 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 
 function getClients() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const supabaseServiceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    "";
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   const geminiApiKey = process.env.GEMINI_API_KEY || "";
   const tmdbApiKey = process.env.TMDB_API_KEY || "";
 
-  if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey || !tmdbApiKey) {
+  if (!supabaseServiceKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY is required for daily generation script");
+  }
+
+  if (!geminiApiKey || !supabaseUrl || !tmdbApiKey) {
     throw new Error(
       "Missing required API keys in environment (GEMINI_API_KEY, TMDB_API_KEY, Supabase keys)"
     );
@@ -55,73 +56,67 @@ async function fetchTargetMovie(tmdbApiKey: string, playedTitles: Set<string>) {
 }
 
 export async function runDailyGenerator() {
+  console.log("🎬 Starting daily movie generator...");
   const { supabase, ai, tmdbApiKey } = getClients();
 
-  // 1. Check existing games from Supabase
-  const { data: playedGames } = await supabase.from("daily_games").select("title");
-  const playedTitles = new Set(playedGames?.map((g) => (g.title || "").toLowerCase().trim()) || []);
+  // 1. Fetch already played movies to prevent repetitions
+  const { data: pastGames, error: fetchErr } = await supabase
+    .from("daily_games")
+    .select("title");
 
+  if (fetchErr) {
+    console.warn("⚠️ Warning fetching past games:", fetchErr.message);
+  }
+
+  const playedTitles = new Set(
+    (pastGames || []).map((g) => g.title.toLowerCase().trim())
+  );
+  console.log(`Found ${playedTitles.size} previously played movies.`);
+
+  // 2. Query TMDB directly for target movie
   const selectedMovie = await fetchTargetMovie(tmdbApiKey, playedTitles);
-  console.log(`🎯 Target: "${selectedMovie.title}" (${selectedMovie.year})`);
+  console.log(
+    `🎯 Selected Movie: "${selectedMovie.title}" (${selectedMovie.year})`
+  );
 
-  // 2. Calibrated prompt matching 40-clue game design
-  const prompt = `
-Generate 40 clues for the trivia game "40Clues".
-Target Movie: "${selectedMovie.title}" (${selectedMovie.year}).
-Context: "${selectedMovie.overview}".
+  // 3. Ask Gemini 2.5 Flash to generate all 40 progressive clues
+  const prompt = `Generate exactly 40 witty, progressive trivia clues for the film "${selectedMovie.title}" (${selectedMovie.year}).
+Plot Synopsis: ${selectedMovie.overview}
 
-EXACT DISTRIBUTION (40 CLUES):
-- 24 clues (60%): Genuine, clever plot points, props, scene events, or key dilemmas.
-- 4 clues (10%): Completely irrelevant, absurdly specific, funny background details (100% true in the movie).
-- 4 clues (10%): Behind-the-scenes trivia, budget quirks, or viral pop culture memes.
-- 4 clues (10%): Memorable or funny quotes/dialogue out of context.
-- 4 clues (10%): Sarcastic "explain a plot badly" summaries of scenes.
+Guidelines for the 40 clues:
+- Difficulty progression: Clues 1-10 must be ultra-cryptic/subtle (e.g. background props, cinematography, trivia). Clues 11-25 moderately recognizable (themes, character quirks). Clues 26-38 obvious plot/dialogue elements. Clues 39-40 practically give it away.
+- Clues must be engaging, creative, and strictly accurate.
+- DO NOT mention the actor names or the movie title directly in any clue.
+- Return ONLY a valid JSON array of 40 strings.`;
 
-STRICT RULES:
-- Never include the movie title: "${selectedMovie.title}".
-- Never name leading actors or characters directly.
-- Output MUST be a JSON object with a single field "clues" containing exactly 40 strings.
-`;
-
-  // 3. Fast call with fallback to gemini-3.8-flash and gemini-3.5-flash-lite
-  const candidateModels = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
-  let clues: string[] = [];
-
-  for (const modelName of candidateModels) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              clues: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-              },
-            },
-            required: ["clues"],
-          },
+  console.log("Generating clues with Gemini 2.5 Flash...");
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.STRING,
         },
-      });
+      },
+    },
+  });
 
-      if (response && response.text) {
-        const parsed = JSON.parse(response.text);
-        if (Array.isArray(parsed.clues) && parsed.clues.length >= 35) {
-          clues = parsed.clues.slice(0, 40);
-          break;
-        }
-      }
-    } catch (err: any) {
-      console.warn(`Model ${modelName} error:`, err?.message || err);
-    }
+  const rawJson = response.text;
+  if (!rawJson) {
+    throw new Error("No response received from Gemini API");
   }
 
-  if (clues.length === 0) {
-    throw new Error("Failed to generate clues from Gemini models.");
+  const clues: string[] = JSON.parse(rawJson);
+  if (!Array.isArray(clues) || clues.length < 40) {
+    throw new Error(
+      `Invalid clue count generated: expected 40, got ${clues?.length}`
+    );
   }
+
+  console.log(`Successfully generated ${clues.length} clues!`);
 
   // 4. Save to Supabase for current date (or update if already exists)
   const today = new Date().toISOString().split("T")[0];
@@ -148,7 +143,9 @@ STRICT RULES:
     cluesCount: clues.length,
     gameDate: today,
   };
+}
 
+if (process.argv[1] && process.argv[1].endsWith("generate-daily.ts")) {
   runDailyGenerator()
     .then((res) => {
       console.log("✅ Generator finished:", res);
@@ -158,5 +155,4 @@ STRICT RULES:
       console.error("❌ Fatal Error:", err);
       process.exit(1);
     });
-
 }

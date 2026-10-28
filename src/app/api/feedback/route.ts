@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/serverAuth";
 
 export async function POST(request: Request) {
     try {
         // Extract the visitor's IP address (Vercel populates this header automatically)
-        const ip = request.headers.get("x-forwarded-for") || "unknown_ip";
+        const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown_ip";
+
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error("Missing SUPABASE_SERVICE_ROLE_KEY in feedback route");
+            return NextResponse.json({ error: "Server misconfiguration" }, { status: 500 });
+        }
 
         // Use the Service Role Key for full admin privileges on the server, bypassing RLS
         const supabaseAdmin = createClient(
@@ -32,7 +38,7 @@ export async function POST(request: Request) {
         }
 
         // 2. MESSAGE PROCESSING
-        const { message, userId } = await request.json();
+        const { message } = await request.json();
 
         if (!message || message.trim().length < 5) {
             return NextResponse.json(
@@ -48,9 +54,14 @@ export async function POST(request: Request) {
             );
         }
 
-        // 3. DATABASE INSERTION
+        // 3. AUTHENTICATION VERIFICATION
+        // Do not trust client-supplied userId from body. Verify against actual session:
+        const user = await getAuthenticatedUser(request);
+        const verifiedUserId = user?.id || null;
+
+        // 4. DATABASE INSERTION
         const { error: insertError } = await supabaseAdmin.from("feedback").insert({
-            user_id: userId || null,
+            user_id: verifiedUserId,
             message: message.trim(),
             ip_address: ip,
         });

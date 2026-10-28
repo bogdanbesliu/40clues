@@ -2,8 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 
 // Initialize server-side Supabase client with service role key if available to bypass RLS securely
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const supabaseServer = createClient(supabaseUrl, supabaseKey);
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+if (!serviceRoleKey) {
+  console.warn("⚠️ SUPABASE_SERVICE_ROLE_KEY is not defined. Name moderation is falling back to ANON_KEY in degraded mode.");
+}
+
+const supabaseServer = createClient(supabaseUrl, serviceRoleKey || anonKey);
 
 // Fallback seed list to ensure moderation is 100% active even before database table creation
 const FALLBACK_FORBIDDEN_WORDS = [

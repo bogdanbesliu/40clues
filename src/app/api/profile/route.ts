@@ -40,7 +40,8 @@ export async function GET(request: Request) {
       .order("game_date", { ascending: false });
 
     if (scoresError) {
-      return NextResponse.json({ error: scoresError.message }, { status: 500 });
+      console.error("Profile GET scores query error:", scoresError.message);
+      return NextResponse.json({ error: "Failed to fetch user scores" }, { status: 500 });
     }
 
     // 2. Fetch movie titles for history
@@ -236,7 +237,7 @@ export async function GET(request: Request) {
   } catch (err: any) {
     console.error("API Profile crash:", err);
     return NextResponse.json(
-      { error: "Internal server error", details: err?.message || String(err) },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -308,7 +309,8 @@ export async function PATCH(request: Request) {
       );
 
     if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 500 });
+      console.error("Profile update error:", profileError.message);
+      return NextResponse.json({ error: "Failed to update profile name" }, { status: 500 });
     }
 
     // 2. Also update anon_name in daily_scores for this user so historical leaderboards display the new name
@@ -321,7 +323,7 @@ export async function PATCH(request: Request) {
   } catch (err: any) {
     console.error("API Profile PATCH error:", err);
     return NextResponse.json(
-      { error: "Failed to update profile name", details: err?.message || String(err) },
+      { error: "Failed to update profile name" },
       { status: 500 }
     );
   }

@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
 
-const DEFAULT_IGNORED_NAMES = ["bogdan besliu", "bogdanbesliu", "bogdan"];
-const DEFAULT_IGNORED_IDS = ["49c306d4-ec77-431d-9819-3dbeeb20489b"];
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 function getIgnoredConfig() {
   const envNames = (process.env.IGNORED_LEADERBOARD_USERS || "")
@@ -17,8 +16,8 @@ function getIgnoredConfig() {
     .filter(Boolean);
 
   return {
-    names: Array.from(new Set([...DEFAULT_IGNORED_NAMES, ...envNames])),
-    ids: Array.from(new Set([...DEFAULT_IGNORED_IDS, ...envIds])),
+    names: Array.from(new Set(envNames)),
+    ids: Array.from(new Set(envIds)),
   };
 }
 
@@ -31,7 +30,8 @@ function isIgnoredUser(name?: string | null, userId?: string | null): boolean {
 
   if (name) {
     const trimmed = name.trim().toLowerCase();
-    if (names.some((ignored) => trimmed === ignored || trimmed.includes(ignored))) {
+    // Use exact match to avoid filtering out innocent users with similar names
+    if (names.includes(trimmed)) {
       return true;
     }
   }
@@ -42,7 +42,9 @@ function isIgnoredUser(name?: string | null, userId?: string | null): boolean {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") || "daily";
-  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const dateParam = searchParams.get("date");
+  const today = new Date().toISOString().split("T")[0];
+  const date = (dateParam && DATE_REGEX.test(dateParam)) ? dateParam : today;
 
   try {
     if (type === "global") {
@@ -67,7 +69,8 @@ export async function GET(request: Request) {
         .limit(50);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("Leaderboard global query error:", error.message);
+        return NextResponse.json({ error: "Failed to load leaderboard" }, { status: 500 });
       }
 
       const filtered = (globalTop || [])
@@ -87,7 +90,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ leaderboard: formatted });
     }
 
-    // Daily Leaderboard: Top scores for today (both authenticated and guests)
+    // Daily Leaderboard: Top scores for date (both authenticated and guests)
     const { data: dailyTop, error } = await supabase
       .from("daily_scores")
       .select(`
@@ -108,7 +111,8 @@ export async function GET(request: Request) {
       .limit(50);
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Leaderboard daily query error:", error.message);
+      return NextResponse.json({ error: "Failed to load leaderboard" }, { status: 500 });
     }
 
     const filteredDaily = (dailyTop || [])
@@ -123,6 +127,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ leaderboard: filteredDaily });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message }, { status: 500 });
+    console.error("Leaderboard GET error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

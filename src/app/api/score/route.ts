@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { isNameForbidden } from "@/lib/nameModeration";
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -33,7 +35,9 @@ export async function POST(request: Request) {
                 cookiesToSet.forEach(({ name, value, options }) =>
                   cookieStore.set(name, value, options)
                 );
-              } catch { }
+              } catch (err) {
+                console.error("Score route cookie set error:", err);
+              }
             },
           },
         }
@@ -47,6 +51,19 @@ export async function POST(request: Request) {
 
     if (!gameDate || typeof cluesUsed !== "number" || typeof score !== "number") {
       return NextResponse.json({ error: "Missing score fields" }, { status: 400 });
+    }
+
+    if (!DATE_REGEX.test(gameDate)) {
+      return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
+    }
+
+    // Server-side bounds enforcement
+    if (cluesUsed < 1 || cluesUsed > 40 || !Number.isInteger(cluesUsed)) {
+      return NextResponse.json({ error: "Invalid cluesUsed value (must be 1-40)" }, { status: 400 });
+    }
+
+    if (score < 0 || score > 1000 || !Number.isInteger(score)) {
+      return NextResponse.json({ error: "Invalid score value (must be 0-1000)" }, { status: 400 });
     }
 
     // CASE 1: Authenticated user (signed in with Google)
@@ -87,7 +104,8 @@ export async function POST(request: Request) {
       );
 
       if (scoreError) {
-        return NextResponse.json({ error: scoreError.message }, { status: 400 });
+        console.error("Score submission error (auth):", scoreError.message);
+        return NextResponse.json({ error: "Failed to record score" }, { status: 400 });
       }
 
       // Recalculate total statistics for Global Leaderboard and Profile
@@ -141,7 +159,32 @@ export async function POST(request: Request) {
       });
     }
 
-    // CASE 2: Unauthenticated user (Guest) -> save to Daily Leaderboard with custom or generated username
+    // CASE 2: Unauthenticated user (Guest) -> Rate limit / Dedup submissions
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown_ip";
+
+    // Rate limit: max 5 guest submissions per 10 minutes from same IP
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const adminClient = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      );
+
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { count } = await adminClient
+        .from("daily_scores")
+        .select("*", { count: "exact", head: true })
+        .is("user_id", null)
+        .eq("game_date", gameDate)
+        .gte("created_at", tenMinutesAgo);
+
+      if (count !== null && count >= 10) {
+        return NextResponse.json(
+          { error: "Too many guest score submissions. Please try again later or sign in." },
+          { status: 429 }
+        );
+      }
+    }
+
     const trimmedAnon = typeof anonName === "string" ? anonName.trim().slice(0, 25) : "";
     let finalUsername = trimmedAnon;
 
@@ -164,7 +207,8 @@ export async function POST(request: Request) {
     });
 
     if (guestError) {
-      return NextResponse.json({ error: guestError.message }, { status: 400 });
+      console.error("Score submission error (guest):", guestError.message);
+      return NextResponse.json({ error: "Failed to record score" }, { status: 400 });
     }
 
     return NextResponse.json({
@@ -173,8 +217,9 @@ export async function POST(request: Request) {
       anonName: finalUsername,
     });
   } catch (err: any) {
+    console.error("Score POST error:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

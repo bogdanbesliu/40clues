@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 const TMDB_GENRES: Record<number, string> = {
   28: "Action",
   12: "Adventure",
@@ -36,7 +38,7 @@ export async function POST(request: Request) {
     }
 
     const currentToday = new Date().toISOString().split("T")[0];
-    const today = gameDate || currentToday;
+    const today = (gameDate && DATE_REGEX.test(gameDate)) ? gameDate : currentToday;
 
     // Restrict archive puzzles to signed-in users only
     if (gameDate && gameDate !== currentToday) {
@@ -71,6 +73,7 @@ export async function POST(request: Request) {
     }
 
     if (error || !game) {
+      if (error) console.error("Lifeline query error:", error.message);
       return NextResponse.json(
         { error: "Daily game not found" },
         { status: 404 }
@@ -133,8 +136,9 @@ export async function POST(request: Request) {
       genre: genreText,
     });
   } catch (err: any) {
+    console.error("Lifeline unexpected error:", err);
     return NextResponse.json(
-      { error: "Internal server error", details: err?.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

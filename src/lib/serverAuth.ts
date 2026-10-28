@@ -41,7 +41,9 @@ export async function getAuthenticatedUser(request: Request) {
               cookiesToSet.forEach(({ name, value, options }) =>
                 cookieStore.set(name, value, options)
               );
-            } catch {}
+            } catch (err) {
+              console.error("serverAuth cookie set error:", err);
+            }
           },
         },
       }
@@ -49,9 +51,16 @@ export async function getAuthenticatedUser(request: Request) {
 
     const {
       data: { user },
+      error,
     } = await supabase.auth.getUser();
+
+    if (error) {
+      console.warn("serverAuth getUser error:", error.message);
+    }
+
     return user || null;
-  } catch {
+  } catch (err) {
+    console.error("serverAuth unexpected error:", err);
     return null;
   }
 }

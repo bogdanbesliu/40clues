@@ -27,13 +27,15 @@ export async function GET(request: Request) {
       .order("game_date", { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error("Archive games query error:", error.message);
+      return NextResponse.json({ error: "Failed to retrieve archives" }, { status: 500 });
     }
 
     return NextResponse.json({ games: games || [] });
   } catch (err: any) {
+    console.error("Archive games unexpected error:", err);
     return NextResponse.json(
-      { error: "Internal server error", details: err?.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

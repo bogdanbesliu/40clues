@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 import { seededShuffle } from "@/lib/utils";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 function normalizeString(str: string) {
   return str
     .toLowerCase()
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     const currentToday = new Date().toISOString().split("T")[0];
-    const today = gameDate || currentToday;
+    const today = (gameDate && DATE_REGEX.test(gameDate)) ? gameDate : currentToday;
 
     // Restrict archive puzzles to signed-in users only
     if (gameDate && gameDate !== currentToday) {
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
     }
 
     if (error || !game) {
+      if (error) console.error("Guess game lookup error:", error.message);
       return NextResponse.json({ error: "Game not found in database" }, { status: 404 });
     }
 
@@ -115,8 +118,9 @@ export async function POST(request: Request) {
       remainingClues: isLastClue ? deck.slice(clueNumber) : undefined,
     });
   } catch (err: any) {
+    console.error("Guess unexpected error:", err);
     return NextResponse.json(
-      { error: "Internal server error", details: err?.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

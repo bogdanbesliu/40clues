@@ -3,8 +3,12 @@ import { supabase } from "@/lib/supabase";
 import { seededShuffle } from "@/lib/utils";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
 
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 async function getGameForDate(targetDate?: string) {
-  const dateToUse = targetDate || new Date().toISOString().split("T")[0];
+  const dateToUse = (targetDate && DATE_REGEX.test(targetDate))
+    ? targetDate
+    : new Date().toISOString().split("T")[0];
 
   let { data: game, error } = await supabase
     .from("daily_games")
@@ -53,6 +57,7 @@ export async function GET(request: Request) {
     const { game, error } = await getGameForDate(dateParam);
 
     if (error || !game) {
+      if (error) console.error("Game GET query error:", error.message);
       return NextResponse.json(
         { error: "No daily game found" },
         { status: 404 }
@@ -71,8 +76,9 @@ export async function GET(request: Request) {
       initialClue: deck[0] || "No clue available",
     });
   } catch (err: any) {
+    console.error("Game GET unexpected error:", err);
     return NextResponse.json(
-      { error: "Internal server error", details: err?.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
@@ -84,7 +90,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, deckSeed, clueNumber, gameDate } = body;
 
-    if (action !== "pass" || !deckSeed || !clueNumber) {
+    if (action !== "pass" || !deckSeed || typeof clueNumber !== "number") {
       return NextResponse.json(
         { error: "Invalid pass request" },
         { status: 400 }
@@ -110,6 +116,7 @@ export async function POST(request: Request) {
     const { game, error } = await getGameForDate(gameDate);
 
     if (error || !game) {
+      if (error) console.error("Game POST query error:", error.message);
       return NextResponse.json(
         { error: "Daily game not found" },
         { status: 404 }
@@ -132,8 +139,9 @@ export async function POST(request: Request) {
       clue: deck[clueIdx],
     });
   } catch (err: any) {
+    console.error("Game POST unexpected error:", err);
     return NextResponse.json(
-      { error: "Internal server error", details: err?.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
