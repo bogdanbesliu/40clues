@@ -73,15 +73,20 @@ export default function GuestNameModal({
           return;
         }
 
-        if (e.key === "Tab" && focusable && focusable.length > 0) {
-          const first = focusable[0];
-          const last = focusable[focusable.length - 1];
-          if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
+        if (e.key === "Tab") {
+          const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+          );
+          if (focusableElements && focusableElements.length > 0) {
+            const first = focusableElements[0];
+            const last = focusableElements[focusableElements.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+              e.preventDefault();
+              last.focus();
+            } else if (!e.shiftKey && document.activeElement === last) {
+              e.preventDefault();
+              first.focus();
+            }
           }
         }
       };
@@ -233,7 +238,7 @@ export default function GuestNameModal({
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isValidating}
-              className="w-full min-h-[46px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              className="w-full min-h-[46px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
             >
               <LogIn className="w-4 h-4 text-slate-950 shrink-0" aria-hidden="true" />
               <span>Save Streak & Claim Badge with Google</span>
@@ -255,17 +260,22 @@ export default function GuestNameModal({
         {/* Guest Name Input Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <div className="space-y-1">
-            <label
-              htmlFor="guest-name-input"
-              className="text-xs font-semibold text-slate-300 flex items-center justify-between"
-            >
-              <span>Leaderboard Detective Handle</span>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="guest-name-input"
+                className="text-xs font-semibold text-slate-300"
+              >
+                Leaderboard Detective Handle
+              </label>
               {name.trim().length >= 3 && !error && (
-                <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                <span
+                  className="text-[11px] text-emerald-400 font-medium flex items-center gap-1"
+                  aria-hidden="true"
+                >
                   <Check className="w-3 h-3" aria-hidden="true" /> Ready
                 </span>
               )}
-            </label>
+            </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                 <User className="w-4 h-4" aria-hidden="true" />
@@ -301,7 +311,7 @@ export default function GuestNameModal({
             >
               {isValidating ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" aria-hidden="true" />
+                  <Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none text-amber-400" aria-hidden="true" />
                   <span>Checking name...</span>
                 </>
               ) : (
