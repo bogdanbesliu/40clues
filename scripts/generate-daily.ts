@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
+import { getCandidateModels } from "../src/config/ai";
 
 function getClients() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -79,7 +80,7 @@ export async function runDailyGenerator() {
     `🎯 Selected Movie: "${selectedMovie.title}" (${selectedMovie.year})`
   );
 
-  // 3. Ask Gemini 3.8 Flash to generate all 40 progressive clues
+  // 3. Ask Gemini to generate all 40 progressive clues with model fallback
   const prompt = `Generate exactly 40 witty, progressive trivia clues for the film "${selectedMovie.title}" (${selectedMovie.year}).
 Plot Synopsis: ${selectedMovie.overview}
 
@@ -89,34 +90,52 @@ Guidelines for the 40 clues:
 - DO NOT mention the actor names or the movie title directly in any clue.
 - Return ONLY a valid JSON array of 40 strings.`;
 
-  console.log("Generating clues with Gemini 3.8 Flash...");
-  const response = await ai.models.generateContent({
-    model: "gemini-3.8-flash",
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.STRING,
-        },
-      },
-    },
-  });
+  const candidateModels = getCandidateModels();
+  let clues: string[] | null = null;
+  let lastError: any = null;
 
-  const rawJson = response.text;
-  if (!rawJson) {
-    throw new Error("No response received from Gemini API");
+  for (const modelName of candidateModels) {
+    console.log(`🤖 Attempting clue generation with Gemini model: "${modelName}"...`);
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.STRING,
+            },
+          },
+        },
+      });
+
+      const rawJson = response.text;
+      if (!rawJson) {
+        throw new Error("No response received from Gemini API");
+      }
+
+      const parsed: string[] = JSON.parse(rawJson);
+      if (Array.isArray(parsed) && parsed.length >= 40) {
+        clues = parsed.slice(0, 40);
+        console.log(`✅ Successfully generated ${clues.length} clues using model "${modelName}"!`);
+        break;
+      } else {
+        throw new Error(`Invalid clue count generated: expected 40, got ${parsed?.length}`);
+      }
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`⚠️ Warning: Model "${modelName}" failed:`, err?.message || err);
+      console.warn("Retrying with next candidate model if available...");
+    }
   }
 
-  const clues: string[] = JSON.parse(rawJson);
-  if (!Array.isArray(clues) || clues.length < 40) {
+  if (!clues || clues.length < 40) {
     throw new Error(
-      `Invalid clue count generated: expected 40, got ${clues?.length}`
+      `Failed to generate clues across all candidate models (${candidateModels.join(", ")}). Last error: ${lastError?.message || lastError}`
     );
   }
-
-  console.log(`Successfully generated ${clues.length} clues!`);
 
   // 4. Save to Supabase for current date (or update if already exists)
   const today = new Date().toISOString().split("T")[0];
