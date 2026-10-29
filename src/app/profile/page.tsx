@@ -18,8 +18,11 @@ import {
   Check,
   X,
   Loader2,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
+import DeleteAccountModal from "@/components/DeleteAccountModal";
 
 interface BadgeItem {
   id: string;
@@ -67,6 +70,7 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const [showAllBadges, setShowAllBadges] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Display Name editing
   const [isEditingName, setIsEditingName] = useState(false);
@@ -172,6 +176,31 @@ export default function ProfilePage() {
     await supabase.auth.signOut();
     window.location.href = "/";
   };
+  const handleDeleteAccount = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) {
+      throw new Error("You must be signed in to delete your account.");
+    }
+
+    const res = await fetch("/api/profile", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      throw new Error(json.error || "Failed to delete account. Please try again.");
+    }
+
+    localStorage.removeItem("40clues_streak");
+    localStorage.removeItem("40clues_streak_freezes");
+    localStorage.removeItem("40clues_guest_name");
+
+    await supabase.auth.signOut();
+    window.location.href = "/?account_deleted=true";
+  };
+
 
   const handleStartEditName = () => {
     if (!data?.user) return;
@@ -600,6 +629,48 @@ export default function ProfilePage() {
             </div>
           )}
         </section>
+
+        {/* Danger Zone: Account Management */}
+        <section
+          aria-labelledby="danger-zone-heading"
+          className="bg-rose-950/20 border border-rose-900/40 rounded-2xl p-5 shadow-sm"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <h2
+                id="danger-zone-heading"
+                className="text-xs uppercase tracking-wider font-extrabold text-rose-400 flex items-center gap-1.5"
+              >
+                <AlertTriangle className="w-4 h-4 text-rose-500" aria-hidden="true" />
+                <span>Danger Zone</span>
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-md">
+                Permanently delete your detective account, career points, daily streaks, badges, and all-time leaderboard standings. This action cannot be undone.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="min-h-[44px] min-w-[44px] px-4 py-2.5 bg-rose-950/60 hover:bg-rose-900/80 active:bg-rose-950 text-rose-200 hover:text-white border border-rose-800/80 hover:border-rose-600 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-2 flex-shrink-0 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            >
+              <Trash2 className="w-4 h-4 text-rose-400" aria-hidden="true" />
+              <span>Delete Account</span>
+            </button>
+          </div>
+        </section>
+
+        <DeleteAccountModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirmDelete={handleDeleteAccount}
+          userStats={{
+            currentStreak: stats.currentStreak,
+            totalPlayed: stats.totalPlayed,
+            totalPoints: stats.totalPoints,
+            unlockedBadgesCount: unlockedCount,
+          }}
+        />
       </div>
     </main>
   );

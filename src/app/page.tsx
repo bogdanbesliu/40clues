@@ -139,6 +139,10 @@ export default function Home() {
 
     const searchParams = new URLSearchParams(window.location.search);
     const dateParam = searchParams.get("date") || undefined;
+    if (searchParams.get("account_deleted") === "true") {
+      setMessage("Your account and data have been permanently deleted.");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
     initGame(dateParam);
 
     return () => subscription.unsubscribe();

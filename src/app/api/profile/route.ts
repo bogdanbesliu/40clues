@@ -320,10 +320,93 @@ export async function PATCH(request: Request) {
       .eq("user_id", user.id);
 
     return NextResponse.json({ success: true, name: trimmedName });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("API Profile PATCH error:", err);
     return NextResponse.json(
       { error: "Failed to update profile name" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace("Bearer ", "").trim();
+
+    if (!token) {
+      return NextResponse.json({ error: "Missing authorization token" }, { status: 401 });
+    }
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    });
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return NextResponse.json({ error: "Unauthorized session" }, { status: 401 });
+    }
+
+    const userId = user.id;
+
+    // Use admin client if service role key is available to purge user and cascade
+    const adminOrClient = supabaseServiceKey
+      ? createClient(supabaseUrl, supabaseServiceKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        })
+      : supabase;
+
+    // 1. Delete all user records from daily_scores
+    const { error: scoresDeleteError } = await adminOrClient
+      .from("daily_scores")
+      .delete()
+      .eq("user_id", userId);
+
+    if (scoresDeleteError) {
+      console.error("Failed to delete user daily_scores:", scoresDeleteError.message);
+    }
+
+    // 2. Delete user profile
+    const { error: profileDeleteError } = await adminOrClient
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (profileDeleteError) {
+      console.error("Failed to delete user profile:", profileDeleteError.message);
+    }
+
+    // 3. Delete auth account from Supabase Auth admin API if service role is present
+    if (supabaseServiceKey) {
+      const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(userId);
+      if (authDeleteError) {
+        console.error("Failed to delete auth user from auth.users:", authDeleteError.message);
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Account and associated data permanently deleted.",
+    });
+  } catch (err: unknown) {
+    console.error("API Profile DELETE error:", err);
+    return NextResponse.json(
+      { error: "Failed to delete account. Please try again." },
       { status: 500 }
     );
   }
