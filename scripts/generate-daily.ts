@@ -79,7 +79,7 @@ export async function runDailyGenerator() {
     `🎯 Selected Movie: "${selectedMovie.title}" (${selectedMovie.year})`
   );
 
-  // 3. Ask Gemini 2.5 Flash to generate all 40 progressive clues
+  // 3. Ask Gemini 3.8 Flash to generate all 40 progressive clues
   const prompt = `Generate exactly 40 witty, progressive trivia clues for the film "${selectedMovie.title}" (${selectedMovie.year}).
 Plot Synopsis: ${selectedMovie.overview}
 
@@ -89,9 +89,9 @@ Guidelines for the 40 clues:
 - DO NOT mention the actor names or the movie title directly in any clue.
 - Return ONLY a valid JSON array of 40 strings.`;
 
-  console.log("Generating clues with Gemini 2.5 Flash...");
+  console.log("Generating clues with Gemini 3.8 Flash...");
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.8-flash",
     contents: prompt,
     config: {
       responseMimeType: "application/json",
