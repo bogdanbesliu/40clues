@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { getAuthenticatedUser } from "@/lib/serverAuth";
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -48,19 +47,8 @@ export async function GET(request: Request) {
 
   try {
     if (type === "global") {
-      const user = await getAuthenticatedUser(request);
-      if (!user) {
-        return NextResponse.json(
-          {
-            error: "Sign in with Google is required to access Global Leaderboards.",
-            isGuest: true,
-            leaderboard: [],
-          },
-          { status: 401 }
-        );
-      }
-
-      // Global Leaderboards: Top registered users by total score (All-Time Hall of Fame)
+      // Global Leaderboards: Top registered users by total score (All-Time Hall of Fame).
+      // Viewable by everyone, but only signed-in users have persistent profiles & cumulative scores.
       const { data: globalTop, error } = await supabase
         .from("profiles")
         .select("id, display_name, avatar_url, total_score, games_played, current_streak")
@@ -78,6 +66,7 @@ export async function GET(request: Request) {
         .slice(0, 20);
 
       const formatted = filtered.map((p) => ({
+        user_id: p.id,
         score: p.total_score || 0,
         clues_used: p.games_played || 0,
         streak: p.current_streak || 0,
