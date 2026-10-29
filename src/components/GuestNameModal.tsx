@@ -200,65 +200,8 @@ export default function GuestNameModal({
           </div>
         </div>
 
-        {/* Loss Aversion / Identity Protection Banner */}
-        {streak > 0 ? (
-          <div className="bg-amber-950/40 border border-amber-600/50 rounded-xl p-3 flex items-start gap-2.5">
-            <div className="p-1 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
-              <Flame className="w-4 h-4 text-amber-400" aria-hidden="true" />
-            </div>
-            <div className="text-xs">
-              <p className="font-bold text-amber-300">
-                {streak > 1 ? `${streak}-Day Streak at Risk!` : "1-Day Streak Started!"}
-              </p>
-              <p className="text-slate-300 text-[11px] leading-relaxed mt-0.5">
-                Guest streaks and stats are stored only in this browser's cache. Connect with Google to protect your streak and badges permanently in the cloud.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-slate-950/60 border border-slate-700/80 rounded-xl p-3 flex items-start gap-2.5">
-            <div className="p-1 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
-              <ShieldCheck className="w-4 h-4 text-amber-400" aria-hidden="true" />
-            </div>
-            <div className="text-xs">
-              <p className="font-bold text-slate-100">
-                Protect Your Detective Record
-              </p>
-              <p className="text-slate-300 text-[11px] leading-relaxed mt-0.5">
-                Sign in with Google to protect your scores, unlock All-Time Global rankings, and play 100+ past archive mysteries free.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Hero Conversion CTA: 1-Click Google Sign In */}
-        {onLogin && (
-          <div className="flex flex-col gap-1.5 pt-1">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isValidating}
-              className="w-full min-h-[46px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
-            >
-              <LogIn className="w-4 h-4 text-slate-950 shrink-0" aria-hidden="true" />
-              <span>Save Streak & Claim Badge with Google</span>
-            </button>
-            <p className="text-[10px] text-center text-slate-400">
-              100% free • 1-click sign-in • Never lose your detective rank
-            </p>
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="relative flex items-center justify-center my-0.5">
-          <div className="border-t border-slate-800 w-full" aria-hidden="true" />
-          <span className="bg-slate-900 px-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-            or post without cloud backup
-          </span>
-        </div>
-
         {/* Guest Name Input Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <label
@@ -302,6 +245,63 @@ export default function GuestNameModal({
               {error}
             </span>
           )}
+
+          {/* Loss Aversion / Identity Protection Banner */}
+          {streak > 0 ? (
+            <div className="bg-amber-950/40 border border-amber-600/50 rounded-xl p-3 flex items-start gap-2.5">
+              <div className="p-1 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                <Flame className="w-4 h-4 text-amber-400" aria-hidden="true" />
+              </div>
+              <div className="text-xs">
+                <p className="font-bold text-amber-300">
+                  {streak > 1 ? `${streak}-Day Streak at Risk!` : "1-Day Streak Started!"}
+                </p>
+                <p className="text-slate-300 text-[11px] leading-relaxed mt-0.5">
+                  Guest streaks and stats are stored only in this browser's cache. Connect with Google to protect your streak and badges permanently in the cloud.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-950/60 border border-slate-700/80 rounded-xl p-3 flex items-start gap-2.5">
+              <div className="p-1 rounded-lg bg-amber-500/20 text-amber-400 shrink-0 mt-0.5">
+                <ShieldCheck className="w-4 h-4 text-amber-400" aria-hidden="true" />
+              </div>
+              <div className="text-xs">
+                <p className="font-bold text-slate-100">
+                  Protect Your Detective Record
+                </p>
+                <p className="text-slate-300 text-[11px] leading-relaxed mt-0.5">
+                  Sign in with Google to protect your scores, unlock All-Time Global rankings, and play 100+ past archive mysteries free.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Hero Conversion CTA: 1-Click Google Sign In */}
+          {onLogin && (
+            <div className="flex flex-col gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isValidating}
+                className="w-full min-h-[46px] bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 disabled:opacity-50 text-slate-950 font-black rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+              >
+                <LogIn className="w-4 h-4 text-slate-950 shrink-0" aria-hidden="true" />
+                <span>Save Streak & Claim Badge with Google</span>
+              </button>
+              <p className="text-[10px] text-center text-slate-400">
+                100% free • 1-click sign-in • Never lose your detective rank
+              </p>
+            </div>
+          )}
+
+          {/* Divider */}
+          <div className="relative flex items-center justify-center my-0.5">
+            <div className="border-t border-slate-800 w-full" aria-hidden="true" />
+            <span className="bg-slate-900 px-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+              or post without cloud backup
+            </span>
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-2 pt-1">
             <button
