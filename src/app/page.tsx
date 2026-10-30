@@ -31,6 +31,7 @@ import ArchiveModal from "@/components/ArchiveModal";
 import GuestNameModal from "@/components/GuestNameModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
+import { normalizeMovieTitle } from "@/lib/utils";
 
 interface SolutionData {
   title: string;
@@ -591,7 +592,7 @@ export default function Home() {
 
   const handleMovieGuess = async (selectedTitle: string) => {
     if (!selectedTitle || hasWon || hasLost || isSubmitting) return;
-    if (attempts.some((a) => a.toLowerCase() === selectedTitle.toLowerCase())) {
+    if (attempts.some((a) => normalizeMovieTitle(a) === normalizeMovieTitle(selectedTitle))) {
       setMessage(`You already tried "${selectedTitle}"! Pick another film.`);
       triggerErrorShake();
       return;

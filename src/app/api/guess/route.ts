@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { seededShuffle } from "@/lib/utils";
+import { seededShuffle, normalizeMovieTitle } from "@/lib/utils";
 import { getAuthenticatedUser } from "@/lib/serverAuth";
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-
-function normalizeString(str: string) {
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]/g, "");
-}
 
 export async function POST(request: Request) {
   try {
@@ -60,7 +53,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Game not found in database" }, { status: 404 });
     }
 
-    const isMatch = normalizeString(guess) === normalizeString(game.title);
+    const isMatch = normalizeMovieTitle(guess) === normalizeMovieTitle(game.title);
     const rawClues = (game.clues as string[]) || [];
     const deck = deckSeed ? seededShuffle(rawClues, deckSeed) : rawClues;
     const isLastClue = clueNumber >= deck.length;

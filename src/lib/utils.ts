@@ -33,3 +33,33 @@ export function seededShuffle<T>(array: T[], seed: string): T[] {
   }
   return arr;
 }
+
+/**
+ * Normalizes movie titles for forgiving matching across adaptations, remakes, and manual entry:
+ * - Decomposes diacritics / accents (e.g., "Amélie" -> "amelie")
+ * - Normalizes ampersands and plus signs to "and" ("Pride & Prejudice" -> "pride and prejudice")
+ * - Standardizes common Roman numerals to digits ("Rocky II" -> "rocky 2")
+ * - Strips trailing 4-digit release years if manually entered (e.g., "(2005)", "2005")
+ * - Strips all non-alphanumeric characters and extra whitespace
+ */
+export function normalizeMovieTitle(title: string): string {
+  if (!title) return "";
+  return title
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s*\(\d{4}\)$/, "")
+    .replace(/\s+\d{4}$/, "")
+    .replace(/&/g, " and ")
+    .replace(/\+/g, " and ")
+    .replace(/\bviii\b/g, "8")
+    .replace(/\bvii\b/g, "7")
+    .replace(/\bvi\b/g, "6")
+    .replace(/\biv\b/g, "4")
+    .replace(/\bv\b/g, "5")
+    .replace(/\biii\b/g, "3")
+    .replace(/\bii\b/g, "2")
+    .replace(/\bi\b/g, "1")
+    .replace(/[^a-z0-9]/g, "");
+}
