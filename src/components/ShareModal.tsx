@@ -206,8 +206,8 @@ export default function ShareModal({
         color: "#F1F5F9",
       },
       {
-        label: hasGivenUp ? "STATUS" : "WIN STREAK",
-        value: hasGivenUp ? "Surrendered 🏳️" : `${streak} 🔥`,
+        label: "DAILY STREAK",
+        value: `${streak} 🔥`,
         color: "#FB923C",
       },
     ];
@@ -328,7 +328,7 @@ export default function ShareModal({
     if (hasGivenUp) {
       const emojiGrid = "⬛".repeat(5);
       const spoilerPart = includeSpoiler ? `\n🎬 Film: ${movieTitle} (${movieYear})` : "";
-      return `40Clues #Cinema 🎬\n🏳️ I gave up after ${clueNumber} clues\n💡 Clues seen: ${clueNumber}/${totalClues}\n🎯 Score: ${score} pts\n${emojiGrid}${spoilerPart}\n\nhttps://40clues.com`;
+      return `40Clues #Cinema 🎬\n🏳️ I gave up after ${clueNumber} clues\n💡 Clues seen: ${clueNumber}/${totalClues}\n🎯 Score: ${score} pts\n🔥 ${streak}-day streak\n${emojiGrid}${spoilerPart}\n\nhttps://40clues.com`;
     }
     const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
     const greenBlock = "🟩";

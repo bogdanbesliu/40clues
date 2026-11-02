@@ -226,6 +226,8 @@ export default function Home() {
         if (parsed.hasWon && parsed.solution) {
           const score = Math.max(25, 1000 - (parsed.scorePenalty || 0));
           await syncScoreToDatabase(parsed.clueNumber, score, today);
+        } else if ((parsed.hasGivenUp || parsed.hasLost) && parsed.solution) {
+          await syncScoreToDatabase(parsed.clueNumber, 0, today);
         }
       } catch (err) {
         console.error("Local sync error:", err);
@@ -481,12 +483,13 @@ export default function Home() {
     return "🪢 By the Skin of Your Teeth";
   };
 
-  const updateStreakOnWin = () => {
+  const updateStreakOnPlay = () => {
     const today = new Date().toISOString().split("T")[0];
-    if (gameDate && gameDate !== today) return;
+    if (gameDate && gameDate !== today) return streak;
     const newStreak = streak + 1;
     setStreak(newStreak);
     localStorage.setItem("40clues_streak", newStreak.toString());
+    return newStreak;
   };
 
   const triggerErrorShake = () => {
@@ -647,8 +650,11 @@ export default function Home() {
 
       const today = new Date().toISOString().split("T")[0];
       if (gameDate === today) {
-        localStorage.setItem("40clues_streak", "0");
-        setStreak(0);
+        updateStreakOnPlay();
+      }
+
+      if (user) {
+        syncScoreToDatabase(clueNumber, 0, gameDate);
       }
 
       saveProgress(
@@ -713,7 +719,7 @@ export default function Home() {
         if (!prefersReducedMotion) {
           confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
         }
-        updateStreakOnWin();
+        updateStreakOnPlay();
         saveProgress(clueNumber, scorePenalty, hasUsedFreePass, attempts, unlockedClues, true, false, sol, rest);
 
         if (user) {
@@ -744,8 +750,10 @@ export default function Home() {
           setMessage(`Game over! The movie was: ${finalSol.title} (${finalSol.year})`);
           const today = new Date().toISOString().split("T")[0];
           if (gameDate === today) {
-            localStorage.setItem("40clues_streak", "0");
-            setStreak(0);
+            updateStreakOnPlay();
+          }
+          if (user) {
+            syncScoreToDatabase(clueNumber, 0, gameDate);
           }
           saveProgress(clueNumber, scorePenalty, hasUsedFreePass, newAttempts, unlockedClues, false, true, finalSol, rest);
         } else {
@@ -1384,28 +1392,33 @@ export default function Home() {
 
             {(hasWon || hasGivenUp) && (
               <div className="grid grid-cols-3 gap-2.5 w-full">
-                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">
                     Score
                   </span>
                   <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">
                     {hasGivenUp ? currentPotentialScore : animatedScore}
                   </span>
+                  {hasGivenUp && user && (
+                    <span className="text-[9px] text-slate-400 mt-0.5 font-medium">
+                      0 pts added to total
+                    </span>
+                  )}
                 </div>
-                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">
-                    Clues Seen
+                    {hasGivenUp ? "Clues Seen" : "Clues Used"}
                   </span>
                   <span className="text-xl sm:text-2xl font-black text-slate-200 mt-0.5">
                     {clueNumber}
                   </span>
                 </div>
-                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
+                <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center justify-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">
-                    {hasGivenUp ? "Status" : "Streak"}
+                    Streak
                   </span>
                   <span className="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">
-                    {hasGivenUp ? "Surrendered" : `${streak}🔥`}
+                    {streak}🔥
                   </span>
                 </div>
               </div>
