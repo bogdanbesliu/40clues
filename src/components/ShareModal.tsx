@@ -23,6 +23,7 @@ interface ShareModalProps {
   movieTitle: string;
   movieYear: number | string;
   hasWon: boolean;
+  hasGivenUp?: boolean;
   gameDate: string;
 }
 
@@ -53,6 +54,7 @@ export default function ShareModal({
   movieTitle,
   movieYear,
   hasWon,
+  hasGivenUp = false,
   gameDate,
 }: ShareModalProps) {
   const [includeSpoiler, setIncludeSpoiler] = useState(false);
@@ -167,27 +169,47 @@ export default function ShareModal({
     ctx.fillText(dateLabel, 540, 205);
 
     // 5. Rank Badge Pill
-    const badgeText = hasWon ? rankBadge : "🎬 Cinema Enthusiast";
+    const badgeText = hasWon
+      ? rankBadge
+      : hasGivenUp
+        ? "🏳️ Surrendered"
+        : "🎬 Cinema Enthusiast";
     ctx.font = "bold 30px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
     const badgeWidth = ctx.measureText(badgeText).width + 60;
     const badgeX = 540 - badgeWidth / 2;
 
-    ctx.fillStyle = "rgba(245, 158, 11, 0.15)";
-    ctx.strokeStyle = "rgba(245, 158, 11, 0.5)";
+    ctx.fillStyle = hasGivenUp
+      ? "rgba(244, 63, 94, 0.15)"
+      : "rgba(245, 158, 11, 0.15)";
+    ctx.strokeStyle = hasGivenUp
+      ? "rgba(244, 63, 94, 0.5)"
+      : "rgba(245, 158, 11, 0.5)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     drawRoundedRect(ctx, badgeX, 245, badgeWidth, 54, 27);
     ctx.fill();
     ctx.stroke();
 
-    ctx.fillStyle = "#FDE68A";
+    ctx.fillStyle = hasGivenUp ? "#FECDD3" : "#FDE68A";
     ctx.fillText(badgeText, 540, 282);
 
     // 6. Stats Grid (3 boxes: Score, Clues Used, Streak)
     const statBoxes = [
-      { label: "FINAL SCORE", value: hasWon ? `${score} pts` : "0 pts", color: "#FBBF24" },
-      { label: "CLUES USED", value: `${clueNumber} / ${totalClues}`, color: "#F1F5F9" },
-      { label: "WIN STREAK", value: `${streak} 🔥`, color: "#FB923C" },
+      {
+        label: hasGivenUp ? "SCORE AT SURRENDER" : "FINAL SCORE",
+        value: hasWon || hasGivenUp ? `${score} pts` : "0 pts",
+        color: "#FBBF24",
+      },
+      {
+        label: hasGivenUp ? "CLUES SEEN" : "CLUES USED",
+        value: `${clueNumber} / ${totalClues}`,
+        color: "#F1F5F9",
+      },
+      {
+        label: hasGivenUp ? "STATUS" : "WIN STREAK",
+        value: hasGivenUp ? "Surrendered 🏳️" : `${streak} 🔥`,
+        color: "#FB923C",
+      },
     ];
 
     const boxWidth = 280;
@@ -295,6 +317,7 @@ export default function ShareModal({
     movieTitle,
     movieYear,
     hasWon,
+    hasGivenUp,
     gameDate,
   ]);
 
@@ -302,6 +325,11 @@ export default function ShareModal({
 
   // Formatted classic text share
   const generateShareText = () => {
+    if (hasGivenUp) {
+      const emojiGrid = "⬛".repeat(5);
+      const spoilerPart = includeSpoiler ? `\n🎬 Film: ${movieTitle} (${movieYear})` : "";
+      return `40Clues #Cinema 🎬\n🏳️ I gave up after ${clueNumber} clues\n💡 Clues seen: ${clueNumber}/${totalClues}\n🎯 Score: ${score} pts\n${emojiGrid}${spoilerPart}\n\nhttps://40clues.com`;
+    }
     const blocksCount = Math.min(5, Math.ceil(clueNumber / 8));
     const greenBlock = "🟩";
     const blackBlock = "⬛";
@@ -388,7 +416,7 @@ export default function ShareModal({
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="w-5 h-5 text-amber-400" aria-hidden="true" />
           <h2 id="share-modal-title" className="text-lg font-extrabold text-slate-100">
-            Share Your Deduction
+            {hasGivenUp ? "Share Your Surrender" : "Share Your Deduction"}
           </h2>
         </div>
 

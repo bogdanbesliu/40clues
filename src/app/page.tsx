@@ -19,6 +19,7 @@ import {
   Menu,
   Calendar,
   X,
+  Flag,
 } from "lucide-react";
 import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
@@ -29,6 +30,7 @@ import NextGameCountdown from "@/components/NextGameCountdown";
 import ShareModal from "@/components/ShareModal";
 import ArchiveModal from "@/components/ArchiveModal";
 import GuestNameModal from "@/components/GuestNameModal";
+import GiveUpModal from "@/components/GiveUpModal";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 import { normalizeMovieTitle } from "@/lib/utils";
@@ -51,6 +53,7 @@ interface StoredGameProgress {
   unlockedLifelines?: { decade?: string; genre?: string };
   hasWon: boolean;
   hasLost: boolean;
+  hasGivenUp?: boolean;
   solution: SolutionData | null;
 }
 
@@ -70,6 +73,7 @@ export default function Home() {
 
   const [hasWon, setHasWon] = useState(false);
   const [hasLost, setHasLost] = useState(false);
+  const [hasGivenUp, setHasGivenUp] = useState(false);
   const [solution, setSolution] = useState<SolutionData | null>(null);
   const [gameDate, setGameDate] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
@@ -80,6 +84,7 @@ export default function Home() {
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState<boolean>(true);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isGiveUpModalOpen, setIsGiveUpModalOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isGuestNameModalOpen, setIsGuestNameModalOpen] = useState(false);
   const [pendingWinData, setPendingWinData] = useState<{
@@ -99,6 +104,7 @@ export default function Home() {
   const [animatedScore, setAnimatedScore] = useState<number>(0);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
+  const giveUpBtnRef = useRef<HTMLButtonElement>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -262,6 +268,7 @@ export default function Home() {
         setUnlockedLifelines(parsed.unlockedLifelines || {});
         setHasWon(parsed.hasWon);
         setHasLost(parsed.hasLost);
+        setHasGivenUp(parsed.hasGivenUp || false);
         setSolution(parsed.solution);
         setIsLoading(false);
         return;
@@ -295,6 +302,7 @@ export default function Home() {
       setHasUsedFreePass(false);
       setHasWon(false);
       setHasLost(false);
+      setHasGivenUp(false);
       setSolution(null);
 
       const initialProgress: StoredGameProgress = {
@@ -309,6 +317,7 @@ export default function Home() {
         unlockedLifelines: {},
         hasWon: false,
         hasLost: false,
+        hasGivenUp: false,
         solution: null,
       };
       localStorage.setItem(`40clues_progress_${activeDate}`, JSON.stringify(initialProgress));
@@ -442,7 +451,8 @@ export default function Home() {
     lost: boolean,
     sol: SolutionData | null,
     newRemainingClues?: string[],
-    newLifelines?: { decade?: string; genre?: string }
+    newLifelines?: { decade?: string; genre?: string },
+    givenUp?: boolean
   ) => {
     if (!gameDate) return;
     const progress: StoredGameProgress = {
@@ -457,6 +467,7 @@ export default function Home() {
       unlockedLifelines: newLifelines !== undefined ? newLifelines : unlockedLifelines,
       hasWon: won,
       hasLost: lost,
+      hasGivenUp: givenUp !== undefined ? givenUp : hasGivenUp,
       solution: sol,
     };
     localStorage.setItem(`40clues_progress_${gameDate}`, JSON.stringify(progress));
@@ -587,6 +598,76 @@ export default function Home() {
       setMessage("Network error unlocking tactical hint.");
     } finally {
       setIsLifelineLoading(null);
+    }
+  };
+
+  const handleGiveUpConfirm = async () => {
+    if (hasWon || hasLost || isSubmitting) return;
+    setIsSubmitting(true);
+    setIsGiveUpModalOpen(false);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch("/api/game", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          action: "give_up",
+          deckSeed,
+          clueNumber,
+          gameDate,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.solution) {
+        setMessage(data.error || "Could not reveal film. Please try again.");
+        return;
+      }
+
+      const finalSol: SolutionData = {
+        title: data.solution.title,
+        year: data.solution.year,
+        poster: data.solution.poster || null,
+      };
+      const rest = data.remainingClues || [];
+
+      setHasLost(true);
+      setHasGivenUp(true);
+      setSolution(finalSol);
+      setRemainingClues(rest);
+      setMessage(`You gave up! The movie was: ${finalSol.title} (${finalSol.year})`);
+
+      const today = new Date().toISOString().split("T")[0];
+      if (gameDate === today) {
+        localStorage.setItem("40clues_streak", "0");
+        setStreak(0);
+      }
+
+      saveProgress(
+        clueNumber,
+        scorePenalty,
+        hasUsedFreePass,
+        attempts,
+        unlockedClues,
+        false,
+        true,
+        finalSol,
+        rest,
+        unlockedLifelines,
+        true
+      );
+    } catch {
+      setMessage("Network error while submitting surrender.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1162,7 +1243,7 @@ export default function Home() {
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                 Tactical Intel (-50 pts):
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {/* Release Decade */}
                 {unlockedLifelines.decade ? (
                   <span className="inline-flex items-center gap-1.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 font-bold px-2.5 py-1 rounded-lg text-xs shadow-sm">
@@ -1206,6 +1287,23 @@ export default function Home() {
                     )}
                   </button>
                 )}
+
+                {/* Give Up Button - visible after 10 tries or skips / after seeing 10 clues */}
+                {(clueNumber >= 10 || unlockedClues.length >= 10 || attempts.length >= 10) && (
+                  <button
+                    ref={giveUpBtnRef}
+                    type="button"
+                    onClick={() => setIsGiveUpModalOpen(true)}
+                    disabled={isLoading || isSubmitting}
+                    aria-haspopup="dialog"
+                    aria-label="Give up and reveal today's movie title"
+                    title="Give up and reveal today's movie"
+                    className="inline-flex items-center gap-1.5 min-h-[44px] sm:min-h-[38px] px-3 py-1.5 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/60 hover:border-rose-500/80 text-rose-300 hover:text-rose-100 transition-all font-semibold text-xs disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 active:scale-95"
+                  >
+                    <Flag className="w-3.5 h-3.5 text-rose-400" aria-hidden="true" />
+                    <span>Give Up</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1244,14 +1342,16 @@ export default function Home() {
         ) : (
           <section className="bg-slate-900 border border-slate-800/90 p-5 sm:p-7 rounded-2xl text-center flex flex-col items-center gap-4 sm:gap-5 shadow-2xl">
             <div className="flex flex-col items-center">
-              <span className="text-4xl mb-1">{hasWon ? "🎉" : "🎬"}</span>
+              <span className="text-4xl mb-1">{hasWon ? "🎉" : hasGivenUp ? "🏳️" : "🎬"}</span>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-100">
-                {hasWon ? "Cinema Mastermind!" : "Game Over"}
+                {hasWon ? "Cinema Mastermind!" : hasGivenUp ? "Better Luck Tomorrow!" : "Game Over"}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
                 {hasWon
                   ? "You successfully deduced today's movie!"
-                  : "Better luck on tomorrow's clues!"}
+                  : hasGivenUp
+                    ? `You gave up after ${clueNumber} clues. Better luck on tomorrow's clues!`
+                    : "Better luck on tomorrow's clues!"}
               </p>
             </div>
 
@@ -1282,19 +1382,19 @@ export default function Home() {
               </div>
             )}
 
-            {hasWon && (
+            {(hasWon || hasGivenUp) && (
               <div className="grid grid-cols-3 gap-2.5 w-full">
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">
                     Score
                   </span>
                   <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5">
-                    {animatedScore}
+                    {hasGivenUp ? currentPotentialScore : animatedScore}
                   </span>
                 </div>
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">
-                    Clues Used
+                    Clues Seen
                   </span>
                   <span className="text-xl sm:text-2xl font-black text-slate-200 mt-0.5">
                     {clueNumber}
@@ -1302,10 +1402,10 @@ export default function Home() {
                 </div>
                 <div className="bg-slate-950/60 border border-slate-800/80 p-2.5 sm:p-3 rounded-xl flex flex-col items-center">
                   <span className="text-[10px] uppercase font-bold text-slate-400">
-                    Streak
+                    {hasGivenUp ? "Status" : "Streak"}
                   </span>
                   <span className="text-xl sm:text-2xl font-black text-orange-400 mt-0.5">
-                    {streak}🔥
+                    {hasGivenUp ? "Surrendered" : `${streak}🔥`}
                   </span>
                 </div>
               </div>
@@ -1317,12 +1417,18 @@ export default function Home() {
               </div>
             )}
 
+            {hasGivenUp && (
+              <div className="text-xs font-bold text-rose-300 bg-rose-950/60 border border-rose-800/70 px-3 py-1 rounded-full">
+                🏳️ Better Luck Tomorrow
+              </div>
+            )}
+
             <button
               onClick={() => setIsShareModalOpen(true)}
               className="w-full min-h-[48px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-6 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               <Share2 className="w-5 h-5" aria-hidden="true" />
-              <span>Share Result</span>
+              <span>{hasGivenUp ? `I gave up after ${clueNumber} clues` : "Share Result"}</span>
             </button>
 
             {/* Live countdown timer until next mystery movie */}
@@ -1492,7 +1598,16 @@ export default function Home() {
         movieTitle={solution?.title || "Mystery Movie"}
         movieYear={solution?.year || ""}
         hasWon={hasWon}
+        hasGivenUp={hasGivenUp}
         gameDate={gameDate}
+      />
+      <GiveUpModal
+        isOpen={isGiveUpModalOpen}
+        onClose={() => setIsGiveUpModalOpen(false)}
+        onConfirm={handleGiveUpConfirm}
+        clueNumber={clueNumber}
+        currentScore={currentPotentialScore}
+        isSubmitting={isSubmitting}
       />
       <GuestNameModal
         isOpen={isGuestNameModalOpen}
