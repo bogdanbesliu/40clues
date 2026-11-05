@@ -681,7 +681,7 @@ export default function SeriesHome() {
   };
 
   const currentClueText = unlockedClues[clueNumber - 1] || "Decoding clue...";
-  const clueBadge = getClueBadge(currentClueText);
+  const clueBadge = getClueBadge(currentClueText, clueNumber);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 antialiased">
@@ -871,9 +871,10 @@ export default function SeriesHome() {
               {/* Clue Header: Badge & Counter */}
               <div className="flex items-center justify-between">
                 <span
-                  className={`text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${clueBadge.colorClass}`}
+                  className={`inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-full border ${clueBadge.colorClass}`}
                 >
-                  {clueBadge.category}
+                  <span aria-hidden="true">{clueBadge.emoji}</span>
+                  <span>{clueBadge.label}</span>
                 </span>
 
                 <div className="flex items-center gap-2 text-xs font-extrabold text-slate-400">
