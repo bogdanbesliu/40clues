@@ -25,7 +25,7 @@ jobs:
       - name: Verify Model Versions
         run: npm run check:models
 
-      - name: Run Daily Game Generator
+      - name: Run Daily Movie Game Generator
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -33,3 +33,12 @@ jobs:
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: npm run generate:daily
+
+      - name: Run Daily TV Series Generator
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.8-flash' }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: npm run generate:daily-tv
