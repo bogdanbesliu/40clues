@@ -181,7 +181,7 @@ export default function SeriesLeaderboardModal({
             role="tab"
             aria-selected={activeTab === "daily"}
             onClick={() => setActiveTab("daily")}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+            className={`flex-1 min-h-[44px] py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
               activeTab === "daily"
                 ? "bg-slate-800 text-amber-400 shadow"
                 : "text-slate-400 hover:text-slate-200"
@@ -194,7 +194,7 @@ export default function SeriesLeaderboardModal({
             role="tab"
             aria-selected={activeTab === "global"}
             onClick={() => setActiveTab("global")}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
+            className={`flex-1 min-h-[44px] py-2 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
               activeTab === "global"
                 ? "bg-slate-800 text-amber-400 shadow"
                 : "text-slate-400 hover:text-slate-200"

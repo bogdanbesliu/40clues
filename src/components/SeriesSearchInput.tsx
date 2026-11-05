@@ -137,22 +137,24 @@ export default function SeriesSearchInput({
           disabled={disabled}
           placeholder="Guess the TV show (e.g. Breaking Bad)..."
           role="combobox"
+          aria-haspopup="listbox"
           aria-expanded={isOpen}
           aria-controls="series-suggestions-list"
           aria-autocomplete="list"
+          aria-invalid={isErrorShake ? "true" : undefined}
           aria-activedescendant={
             selectedIndex >= 0 ? `series-option-${selectedIndex}` : undefined
           }
-          className="w-full pl-11 pr-11 py-3.5 bg-slate-900 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus:border-transparent transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full pl-11 pr-14 py-3.5 bg-slate-900 border border-slate-700/80 rounded-xl text-slate-100 placeholder-slate-400 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 focus:border-transparent transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
         {query.trim().length >= 2 && !disabled && (
           <button
             onClick={() => handleSelect(query.trim())}
             aria-label="Submit TV series guess"
-            className="absolute right-2.5 p-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg transition-all active:scale-95 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-w-[32px] min-h-[32px]"
+            className="absolute right-1.5 p-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg transition-all active:scale-95 flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-w-[44px] min-h-[44px]"
           >
-            <CornerDownLeft className="w-4 h-4" aria-hidden="true" />
+            <CornerDownLeft className="w-5 h-5" aria-hidden="true" />
           </button>
         )}
       </div>
