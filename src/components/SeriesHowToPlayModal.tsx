@@ -104,7 +104,7 @@ export default function SeriesHowToPlayModal({
           <div className="flex items-start gap-3">
             <Tv className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
             <div>
-              <span className="font-bold text-slate-100">One Secret TV Show Daily:</span> You have a shuffled deck of up to 40 clues about today's target television series.
+              <span className="font-bold text-slate-100">One Secret TV Show Daily:</span> You have a shuffled deck of up to 40 clues about today&apos;s target television series.
             </div>
           </div>
 
@@ -142,7 +142,7 @@ export default function SeriesHowToPlayModal({
           onClick={onClose}
           className="w-full min-h-[44px] bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-2.5 rounded-xl transition-all shadow-md active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 text-xs mt-1"
         >
-          Got it, let's play!
+          Got it, let&apos;s play!
         </button>
       </div>
     </div>

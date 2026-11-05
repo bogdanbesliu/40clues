@@ -226,7 +226,7 @@ export default function SeriesLeaderboardModal({
             <div className="flex flex-col items-center justify-center h-48 gap-2 text-slate-400 p-4 text-center">
               <Trophy className="w-8 h-8 text-slate-400" aria-hidden="true" />
               <p className="text-xs font-medium text-slate-300">No TV detective scores logged yet.</p>
-              <p className="text-[11px] text-slate-400">Be the first to solve today's TV puzzle!</p>
+              <p className="text-[11px] text-slate-400">Be the first to solve today&apos;s TV puzzle!</p>
             </div>
           ) : (
             entries.map((entry, idx) => {

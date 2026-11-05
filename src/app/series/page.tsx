@@ -858,7 +858,7 @@ export default function SeriesHome() {
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center min-h-[350px] gap-3 text-slate-400">
             <Tv className="w-10 h-10 animate-bounce text-sky-400" aria-hidden="true" />
-            <p className="text-sm font-semibold text-slate-300">Tuning into today's mystery series...</p>
+            <p className="text-sm font-semibold text-slate-300">Tuning into today&apos;s mystery series...</p>
           </div>
         ) : !hasWon && !hasLost && !hasGivenUp ? (
           <>
@@ -1211,7 +1211,7 @@ export default function SeriesHome() {
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
         <div className="max-w-2xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© {new Date().getFullYear()} 40Clues: TV Series Edition. Daily Television Deduction.</p>
+          <p>© 40Clues 2026: TV Series Edition. Daily Television Deduction.</p>
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsFeedbackOpen(true)}
