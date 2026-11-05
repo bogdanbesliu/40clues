@@ -378,70 +378,80 @@ export default function HeaderNavigation({
                   aria-label="Header navigation options"
                   className="hidden sm:flex flex-col absolute right-0 top-full mt-2 w-72 rounded-2xl bg-slate-900/95 backdrop-blur-xl border border-slate-800 shadow-2xl p-2 z-50 text-slate-200 animate-in fade-in zoom-in-95 duration-150"
                 >
-                  {/* Edition Switcher Section */}
+                  {/* 1. Profile / Auth Section (Top) */}
                   <div className="p-1.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 pb-1 block">
-                      Switch Game Edition
-                    </span>
-                    {isCinema ? (
-                      <Link
-                        href="/series"
-                        role="menuitem"
-                        onClick={() => setIsDesktopDropdownOpen(false)}
-                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 hover:bg-sky-950/30 border border-slate-800 hover:border-sky-500/40 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                            <Tv className="w-4 h-4" aria-hidden="true" />
-                          </div>
-                          <div className="text-left">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-slate-200 group-hover:text-sky-300">
-                                TV Series Edition
-                              </span>
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                                NEW
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400">
-                              Daily mystery television shows
-                            </p>
-                          </div>
-                        </div>
-                        <ArrowRight
-                          className="w-3.5 h-3.5 text-slate-500 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
-                          aria-hidden="true"
-                        />
-                      </Link>
-                    ) : (
-                      <Link
-                        href="/"
-                        role="menuitem"
-                        onClick={() => setIsDesktopDropdownOpen(false)}
-                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 hover:bg-amber-950/30 border border-slate-800 hover:border-amber-500/40 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                            <Film className="w-4 h-4" aria-hidden="true" />
-                          </div>
-                          <div className="text-left">
-                            <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 block">
-                              Cinema Edition
+                    {user ? (
+                      <div className="flex flex-col gap-1.5">
+                        <Link
+                          href={profileHref}
+                          role="menuitem"
+                          onClick={() => setIsDesktopDropdownOpen(false)}
+                          className={`flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-colors group focus:outline-none focus-visible:ring-2 ${activeFocusRing}`}
+                        >
+                          <User
+                            className={`w-4 h-4 ${
+                              isCinema ? "text-amber-400" : "text-sky-400"
+                            }`}
+                            aria-hidden="true"
+                          />
+                          <div className="text-left min-w-0 flex-1">
+                            <span className="text-xs font-bold text-slate-200 group-hover:text-white block truncate">
+                              {user.user_metadata?.full_name ||
+                                user.email?.split("@")[0] ||
+                                "My Profile"}
                             </span>
-                            <p className="text-[10px] text-slate-400">
-                              Daily mystery feature movies
-                            </p>
+                            <span className="text-[10px] text-slate-400 block truncate">
+                              View career stats & badges
+                            </span>
                           </div>
+                        </Link>
+
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setIsDesktopDropdownOpen(false);
+                            onSignOut();
+                          }}
+                          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                        >
+                          <LogOut className="w-4 h-4" aria-hidden="true" />
+                          <span className="text-xs font-semibold">Sign Out</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2 p-1">
+                        <div className="text-left">
+                          <span className="text-xs font-bold text-slate-200 block">
+                            Guest Detective
+                          </span>
+                          <span className="text-[10px] text-slate-400 block">
+                            Sign in to save progress and join leaderboards.
+                          </span>
                         </div>
-                        <ArrowRight
-                          className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all"
-                          aria-hidden="true"
-                        />
-                      </Link>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setIsDesktopDropdownOpen(false);
+                            onGoogleLogin();
+                          }}
+                          className={`w-full min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all focus:outline-none focus-visible:ring-2 ${
+                            isCinema
+                              ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 focus-visible:ring-amber-300"
+                              : "bg-gradient-to-r from-sky-400 to-cyan-500 hover:from-sky-300 hover:to-cyan-400 text-slate-950 focus-visible:ring-sky-300"
+                          }`}
+                        >
+                          <LogIn className="w-4 h-4 text-slate-950" aria-hidden="true" />
+                          <span>Sign In with Google</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
-                  {/* Archive Option (Cinema & Series) */}
+                  <div className="my-1 border-t border-slate-800/80" />
+
+                  {/* 2. Archive Option */}
                   {(onOpenArchive || isCinema) && (
                     <div className="px-1.5 py-1">
                       {onOpenArchive ? (
@@ -519,74 +529,66 @@ export default function HeaderNavigation({
 
                   <div className="my-1 border-t border-slate-800/80" />
 
-                  {/* Auth / Account Section */}
+                  {/* 3. The Other Edition of the Game */}
                   <div className="p-1.5">
-                    {user ? (
-                      <div className="flex flex-col gap-1.5">
-                        <Link
-                          href={profileHref}
-                          role="menuitem"
-                          onClick={() => setIsDesktopDropdownOpen(false)}
-                          className={`flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-colors group focus:outline-none focus-visible:ring-2 ${activeFocusRing}`}
-                        >
-                          <User
-                            className={`w-4 h-4 ${
-                              isCinema ? "text-amber-400" : "text-sky-400"
-                            }`}
-                            aria-hidden="true"
-                          />
-                          <div className="text-left min-w-0 flex-1">
-                            <span className="text-xs font-bold text-slate-200 group-hover:text-white block truncate">
-                              {user.user_metadata?.full_name ||
-                                user.email?.split("@")[0] ||
-                                "My Profile"}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block truncate">
-                              View career stats & badges
-                            </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 pb-1 block">
+                      Other Edition
+                    </span>
+                    {isCinema ? (
+                      <Link
+                        href="/series"
+                        role="menuitem"
+                        onClick={() => setIsDesktopDropdownOpen(false)}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 hover:bg-sky-950/30 border border-slate-800 hover:border-sky-500/40 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                            <Tv className="w-4 h-4" aria-hidden="true" />
                           </div>
-                        </Link>
-
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setIsDesktopDropdownOpen(false);
-                            onSignOut();
-                          }}
-                          className="w-full flex items-center gap-2.5 p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 transition-colors text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                        >
-                          <LogOut className="w-4 h-4" aria-hidden="true" />
-                          <span className="text-xs font-semibold">Sign Out</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2 p-1">
-                        <div className="text-left">
-                          <span className="text-xs font-bold text-slate-200 block">
-                            Guest Detective
-                          </span>
-                          <span className="text-[10px] text-slate-400 block">
-                            Sign in to save progress and join leaderboards.
-                          </span>
+                          <div className="text-left">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-slate-200 group-hover:text-sky-300">
+                                TV Series Edition
+                              </span>
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                                NEW
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">
+                              Daily mystery television shows
+                            </p>
+                          </div>
                         </div>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setIsDesktopDropdownOpen(false);
-                            onGoogleLogin();
-                          }}
-                          className={`w-full min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all focus:outline-none focus-visible:ring-2 ${
-                            isCinema
-                              ? "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 focus-visible:ring-amber-300"
-                              : "bg-gradient-to-r from-sky-400 to-cyan-500 hover:from-sky-300 hover:to-cyan-400 text-slate-950 focus-visible:ring-sky-300"
-                          }`}
-                        >
-                          <LogIn className="w-4 h-4 text-slate-950" aria-hidden="true" />
-                          <span>Sign In with Google</span>
-                        </button>
-                      </div>
+                        <ArrowRight
+                          className="w-3.5 h-3.5 text-slate-500 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                          aria-hidden="true"
+                        />
+                      </Link>
+                    ) : (
+                      <Link
+                        href="/"
+                        role="menuitem"
+                        onClick={() => setIsDesktopDropdownOpen(false)}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-slate-950/60 hover:bg-amber-950/30 border border-slate-800 hover:border-amber-500/40 transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                            <Film className="w-4 h-4" aria-hidden="true" />
+                          </div>
+                          <div className="text-left">
+                            <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 block">
+                              Cinema Edition
+                            </span>
+                            <p className="text-[10px] text-slate-400">
+                              Daily mystery feature movies
+                            </p>
+                          </div>
+                        </div>
+                        <ArrowRight
+                          className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all"
+                          aria-hidden="true"
+                        />
+                      </Link>
                     )}
                   </div>
 
@@ -685,43 +687,7 @@ export default function HeaderNavigation({
                 </button>
               </div>
 
-              {/* Mobile Edition Switcher Segment */}
-              <div className="flex flex-col gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-slate-800">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 pt-1">
-                  Choose Game Edition
-                </span>
-                <div className="grid grid-cols-2 gap-1 p-0.5">
-                  <Link
-                    href="/"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    aria-current={isCinema ? "page" : undefined}
-                    className={`min-h-[44px] flex items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 ${
-                      isCinema
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <Film className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-                    <span>Cinema</span>
-                  </Link>
-
-                  <Link
-                    href="/series"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    aria-current={!isCinema ? "page" : undefined}
-                    className={`min-h-[44px] flex items-center justify-center gap-2 rounded-lg text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-                      !isCinema
-                        ? "bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
-                    }`}
-                  >
-                    <Tv className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
-                    <span>TV Series</span>
-                  </Link>
-                </div>
-              </div>
-
-              {/* User Card or Guest Sign-In */}
+              {/* 1. User Card or Guest Sign-In (Top) */}
               <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
                 {user ? (
                   <div className="flex flex-col gap-3">
@@ -824,7 +790,7 @@ export default function HeaderNavigation({
 
               {/* Navigation Links */}
               <nav aria-label="Mobile Navigation Links" className="flex flex-col gap-2">
-                {/* Puzzle Archive Option (Cinema & Series) */}
+                {/* 2. Puzzle Archive Option */}
                 {(onOpenArchive || isCinema) && (
                   <>
                     {onOpenArchive ? (
@@ -902,6 +868,62 @@ export default function HeaderNavigation({
                       </Link>
                     )}
                   </>
+                )}
+
+                {/* 3. The Other Edition of the Game */}
+                {isCinema ? (
+                  <Link
+                    href="/series"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-800 hover:border-sky-500/40 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-sky-500/10 text-sky-400 group-hover:scale-105 transition-transform">
+                        <Tv className="w-4 h-4" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-slate-200 group-hover:text-sky-300 transition-colors">
+                            TV Series Edition
+                          </span>
+                          <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                            NEW
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          Daily mystery television shows
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight
+                      className="w-4 h-4 text-slate-400 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                ) : (
+                  <Link
+                    href="/"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 group-hover:scale-105 transition-transform">
+                        <Film className="w-4 h-4" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors block">
+                          Cinema Edition
+                        </span>
+                        <p className="text-[10px] text-slate-400">
+                          Daily mystery feature movies
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight
+                      className="w-4 h-4 text-slate-400 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all"
+                      aria-hidden="true"
+                    />
+                  </Link>
                 )}
 
                 {/* How to Play */}
