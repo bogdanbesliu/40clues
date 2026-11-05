@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "40Clues: TV Series (Guess the TV show in 40 clues!)",
   description:
