@@ -978,7 +978,7 @@ export default function Home() {
                       <Link
                         href="/profile"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex-1 py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className="flex-1 min-h-[44px] py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
                       >
                         <User className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
                         <span>Profile & Stats</span>
@@ -988,7 +988,7 @@ export default function Home() {
                           handleSignOut();
                           setIsMobileMenuOpen(false);
                         }}
-                        className="py-2 px-3 bg-slate-800/60 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                        className="min-h-[44px] py-2 px-3 bg-slate-800/60 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                         aria-label="Sign Out"
                       >
                         <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
@@ -1010,7 +1010,7 @@ export default function Home() {
                         handleGoogleLogin();
                         setIsMobileMenuOpen(false);
                       }}
-                      className="w-full min-h-[42px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+                      className="w-full min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
                     >
                       <LogIn className="w-4 h-4" aria-hidden="true" />
                       <span>Sign in with Google</span>
@@ -1137,14 +1137,14 @@ export default function Home() {
                   setIsMobileMenuOpen(false);
                   setIsFeedbackOpen(true);
                 }}
-                className="hover:text-amber-400 transition-colors underline underline-offset-2"
+                className="p-2 -m-2 min-h-[44px] flex items-center hover:text-amber-400 transition-colors underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >
                 Feedback
               </button>
               <Link
                 href="/privacy"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="hover:text-amber-400 transition-colors underline underline-offset-2"
+                className="p-2 -m-2 min-h-[44px] flex items-center hover:text-amber-400 transition-colors underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
               >
                 Privacy Policy
               </Link>

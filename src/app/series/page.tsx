@@ -108,6 +108,7 @@ export default function SeriesHome() {
   const leaderboardTriggerRef = useRef<HTMLButtonElement>(null);
   const giveUpTriggerRef = useRef<HTMLButtonElement>(null);
   const guestNameTriggerRef = useRef<HTMLButtonElement>(null);
+  const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -116,6 +117,19 @@ export default function SeriesHome() {
 
   // Score calculation: 1000 base - penalties, floor at 25
   const currentPotentialScore = Math.max(25, 1000 - scorePenalty);
+
+  // Close mobile dropdown on Escape
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        hamburgerBtnRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isMobileMenuOpen]);
 
   // Auth listener
   useEffect(() => {
@@ -788,6 +802,7 @@ export default function SeriesHome() {
 
             {/* Mobile hamburger menu */}
             <button
+              ref={hamburgerBtnRef}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-expanded={isMobileMenuOpen}
               aria-label="Toggle mobile menu"
@@ -830,9 +845,9 @@ export default function SeriesHome() {
                 setIsHowToPlayOpen(true);
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px]"
+              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
             >
-              <HelpCircle className="w-4 h-4 text-slate-400" />
+              <HelpCircle className="w-4 h-4 text-slate-400" aria-hidden="true" />
               <span>How to Play</span>
             </button>
             <button
@@ -840,9 +855,9 @@ export default function SeriesHome() {
                 setIsLeaderboardOpen(true);
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold"
+              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
             >
-              <Trophy className="w-4 h-4 text-amber-400" />
+              <Trophy className="w-4 h-4 text-amber-400" aria-hidden="true" />
               <span>TV Leaderboard</span>
             </button>
             <button
@@ -850,9 +865,9 @@ export default function SeriesHome() {
                 setIsFeedbackOpen(true);
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold"
+              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
             >
-              <Sparkles className="w-4 h-4 text-indigo-400" />
+              <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
               <span>Send Feedback</span>
             </button>
 
@@ -861,25 +876,25 @@ export default function SeriesHome() {
                 <Link
                   href="/profile"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold"
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
                 >
-                  <User className="w-4 h-4 text-emerald-400" />
+                  <User className="w-4 h-4 text-emerald-400" aria-hidden="true" />
                   <span>My Profile</span>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/30 flex items-center gap-2.5 text-xs font-semibold"
+                  className="w-full text-left px-3 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/30 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 transition-colors"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-4 h-4" aria-hidden="true" />
                   <span>Sign Out</span>
                 </button>
               </>
             ) : (
               <button
                 onClick={handleLogin}
-                className="w-full text-left px-3 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold flex items-center gap-2.5 text-xs"
+                className="w-full text-left px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center gap-2.5 text-xs min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 transition-colors shadow-sm"
               >
-                <LogIn className="w-4 h-4" />
+                <LogIn className="w-4 h-4" aria-hidden="true" />
                 <span>Sign in with Google</span>
               </button>
             )}
@@ -1060,13 +1075,13 @@ export default function SeriesHome() {
                 <button
                   onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
                   aria-expanded={isHistoryExpanded}
-                  className="flex items-center justify-between text-xs font-bold text-slate-300 hover:text-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded p-1"
+                  className="w-full min-h-[44px] flex items-center justify-between text-xs font-bold text-slate-300 hover:text-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-lg px-2 -my-1"
                 >
                   <span>Clues Unlocked So Far ({unlockedClues.length})</span>
                   {isHistoryExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400" />
+                    <ChevronUp className="w-4 h-4 text-slate-400" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                    <ChevronDown className="w-4 h-4 text-slate-400" aria-hidden="true" />
                   )}
                 </button>
 
