@@ -12,6 +12,7 @@ import {
   LogIn,
   LogOut,
   Film,
+  Tv,
   ChevronDown,
   ChevronUp,
   Pencil,
@@ -307,7 +308,7 @@ export default function ProfilePage() {
             href="/"
             className="text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors"
           >
-            ← Back to today's puzzle
+            ← Back to today&apos;s puzzle
           </Link>
         </div>
       </main>
@@ -349,14 +350,25 @@ export default function ProfilePage() {
             <span>Play Daily Game</span>
           </Link>
 
-          <button
-            type="button"
-            onClick={handleSignOut}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-rose-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded"
-          >
-            <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Sign Out</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/series/profile"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900 border border-sky-500/40 text-sky-300 hover:bg-sky-950/40 text-xs font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              title="View TV Series Edition Profile"
+            >
+              <Tv className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
+              <span>Series Profile</span>
+            </Link>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="min-h-[40px] inline-flex items-center gap-1.5 text-xs font-semibold text-slate-300 hover:text-rose-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 rounded px-2"
+            >
+              <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="hidden sm:inline">Sign Out</span>
+            </button>
+          </div>
         </header>
 
         {/* User Card */}
@@ -599,7 +611,7 @@ export default function ProfilePage() {
 
           {history.length === 0 ? (
             <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-xl text-center text-xs text-slate-400">
-              No games solved yet. Complete today's puzzle to record your score!
+              No games solved yet. Complete today&apos;s puzzle to record your score!
             </div>
           ) : (
             <div className="flex flex-col gap-2">

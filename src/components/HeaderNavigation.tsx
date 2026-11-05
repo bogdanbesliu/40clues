@@ -78,6 +78,7 @@ export default function HeaderNavigation({
   const menuTriggerBtnRef = useRef<HTMLButtonElement>(null);
 
   const isCinema = edition === "cinema";
+  const profileHref = isCinema ? "/profile" : "/series/profile";
 
   // Edition-specific theme tokens
   const activeFocusRing = isCinema
@@ -523,7 +524,7 @@ export default function HeaderNavigation({
                     {user ? (
                       <div className="flex flex-col gap-1.5">
                         <Link
-                          href="/profile"
+                          href={profileHref}
                           role="menuitem"
                           onClick={() => setIsDesktopDropdownOpen(false)}
                           className={`flex items-center gap-2.5 p-2 rounded-xl hover:bg-slate-800/80 transition-colors group focus:outline-none focus-visible:ring-2 ${activeFocusRing}`}
@@ -761,7 +762,7 @@ export default function HeaderNavigation({
 
                     <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
                       <Link
-                        href="/profile"
+                        href={profileHref}
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={`flex-1 min-h-[44px] py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 ${activeFocusRing}`}
                       >
