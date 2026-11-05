@@ -11,6 +11,7 @@ import {
   X,
   Flag,
   Film,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import SeriesSearchInput from "@/components/SeriesSearchInput";
@@ -21,6 +22,7 @@ import NextGameCountdown from "@/components/NextGameCountdown";
 import SeriesShareModal from "@/components/SeriesShareModal";
 import GuestNameModal from "@/components/GuestNameModal";
 import SeriesGiveUpModal from "@/components/SeriesGiveUpModal";
+import SeriesArchiveModal from "@/components/SeriesArchiveModal";
 import HeaderNavigation from "@/components/HeaderNavigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
@@ -76,6 +78,7 @@ export default function SeriesHome() {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isGiveUpModalOpen, setIsGiveUpModalOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isGuestNameModalOpen, setIsGuestNameModalOpen] = useState(false);
   const [pendingWinData, setPendingWinData] = useState<{
     cluesUsed: number;
@@ -154,17 +157,18 @@ export default function SeriesHome() {
   }, []);
 
   // Main game initialization
-  const initGame = async () => {
+  const initGame = async (dateOverride?: string) => {
     setIsLoading(true);
     setMessage("");
 
     try {
       const today = new Date().toISOString().split("T")[0];
-      const savedProgress = localStorage.getItem(`40clues_tv_progress_${today}`);
+      const targetDate = dateOverride || today;
+      const savedProgress = localStorage.getItem(`40clues_tv_progress_${targetDate}`);
 
       if (savedProgress) {
         const parsed: StoredGameProgress = JSON.parse(savedProgress);
-        if (parsed.gameDate === today) {
+        if (parsed.gameDate === targetDate) {
           setGameDate(parsed.gameDate);
           setDeckSeed(parsed.deckSeed);
           setClueNumber(parsed.clueNumber);
@@ -185,10 +189,27 @@ export default function SeriesHome() {
 
       // Fetch fresh game state
       const seed = Math.random().toString(36).substring(2, 10);
-      const res = await fetch(`/api/series/game?deckSeed=${seed}`);
+      const dateQuery = targetDate ? `&date=${encodeURIComponent(targetDate)}` : "";
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      const res = await fetch(`/api/series/game?deckSeed=${seed}${dateQuery}`, { headers });
+
+      if (res.status === 403) {
+        setMessage("Sign in required to play TV series archive puzzles.");
+        setIsLoading(false);
+        return;
+      }
 
       if (!res.ok) {
-        throw new Error("Failed to load today's TV series game");
+        throw new Error("Failed to load TV series game");
       }
 
       const data = await res.json();
@@ -206,16 +227,18 @@ export default function SeriesHome() {
       setHasLost(false);
       setHasGivenUp(false);
       setSolution(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to initialize TV series game:", err);
-      setMessage("Could not load today's TV series puzzle. Please refresh the page.");
+      setMessage("Could not load TV series puzzle. Please refresh the page.");
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    initGame();
+    const searchParams = new URLSearchParams(window.location.search);
+    const dateParam = searchParams.get("date") || undefined;
+    initGame(dateParam);
   }, []);
 
   // How to play first-time prompt
@@ -688,6 +711,7 @@ export default function SeriesHome() {
         streak={streak}
         onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenArchive={() => setIsArchiveOpen(true)}
         onOpenFeedback={() => setIsFeedbackOpen(true)}
         onSignOut={handleLogout}
         onGoogleLogin={handleLogin}
@@ -696,6 +720,27 @@ export default function SeriesHome() {
 
       {/* Main Game Arena */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
+        {/* Historical Archive Puzzle Banner */}
+        {gameDate && gameDate !== new Date().toISOString().split("T")[0] && (
+          <aside
+            aria-label="Historical TV puzzle notice"
+            className="w-full p-3.5 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-between gap-3 text-xs shadow-sm"
+          >
+            <div className="flex items-center gap-2 text-sky-300 font-semibold">
+              <Calendar className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+              <span>Archive TV Mystery ({gameDate})</span>
+            </div>
+            <button
+              onClick={() => {
+                window.history.pushState({}, "", "/series");
+                initGame(undefined);
+              }}
+              className="text-sky-400 hover:text-sky-300 font-bold underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 rounded"
+            >
+              Return to Today
+            </button>
+          </aside>
+        )}
         {isLoading ? (
           <div className="flex-1 flex flex-col items-center justify-center min-h-[350px] gap-3 text-slate-400">
             <Tv className="w-10 h-10 animate-bounce text-sky-400" aria-hidden="true" />
@@ -1122,6 +1167,18 @@ export default function SeriesHome() {
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
         userId={user?.id}
+      />
+
+      <SeriesArchiveModal
+        isOpen={isArchiveOpen}
+        onClose={() => setIsArchiveOpen(false)}
+        onSelectDate={(selectedDate) => {
+          window.history.pushState({}, "", `/series?date=${selectedDate}`);
+          initGame(selectedDate);
+        }}
+        currentGameDate={gameDate}
+        isLoggedIn={Boolean(user)}
+        onLogin={handleLogin}
       />
     </div>
   );

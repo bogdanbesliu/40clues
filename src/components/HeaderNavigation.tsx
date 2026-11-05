@@ -440,8 +440,8 @@ export default function HeaderNavigation({
                     )}
                   </div>
 
-                  {/* Cinema Archive Option */}
-                  {isCinema && (
+                  {/* Archive Option (Cinema & Series) */}
+                  {(onOpenArchive || isCinema) && (
                     <div className="px-1.5 py-1">
                       {onOpenArchive ? (
                         <button
@@ -451,24 +451,38 @@ export default function HeaderNavigation({
                             setIsDesktopDropdownOpen(false);
                             onOpenArchive();
                           }}
-                          className="w-full flex items-center justify-between p-2 rounded-xl text-slate-200 hover:bg-slate-800/80 transition-colors group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                          className={`w-full flex items-center justify-between p-2 rounded-xl text-slate-200 hover:bg-slate-800/80 transition-colors group focus:outline-none focus-visible:ring-2 ${activeFocusRing}`}
                         >
                           <div className="flex items-center gap-2.5">
                             <Calendar
-                              className="w-4 h-4 text-amber-400"
+                              className={`w-4 h-4 ${
+                                isCinema ? "text-amber-400" : "text-sky-400"
+                              }`}
                               aria-hidden="true"
                             />
                             <div className="text-left">
-                              <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 block">
-                                Puzzle Archive
+                              <span
+                                className={`text-xs font-bold text-slate-200 block ${
+                                  isCinema
+                                    ? "group-hover:text-amber-300"
+                                    : "group-hover:text-sky-300"
+                                }`}
+                              >
+                                {isCinema ? "Puzzle Archive" : "Series Archive"}
                               </span>
                               <p className="text-[10px] text-slate-400">
-                                Play past daily movies
+                                {isCinema
+                                  ? "Play past daily movies"
+                                  : "Play past television shows"}
                               </p>
                             </div>
                           </div>
                           <ArrowRight
-                            className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all"
+                            className={`w-3.5 h-3.5 text-slate-500 group-hover:translate-x-0.5 transition-all ${
+                              isCinema
+                                ? "group-hover:text-amber-400"
+                                : "group-hover:text-sky-400"
+                            }`}
                             aria-hidden="true"
                           />
                         </button>
@@ -809,8 +823,8 @@ export default function HeaderNavigation({
 
               {/* Navigation Links */}
               <nav aria-label="Mobile Navigation Links" className="flex flex-col gap-2">
-                {/* Cinema Puzzle Archive Option */}
-                {isCinema && (
+                {/* Puzzle Archive Option (Cinema & Series) */}
+                {(onOpenArchive || isCinema) && (
                   <>
                     {onOpenArchive ? (
                       <button
@@ -819,23 +833,45 @@ export default function HeaderNavigation({
                           setIsMobileMenuOpen(false);
                           onOpenArchive();
                         }}
-                        className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+                        className={`w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-800 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 ${
+                          isCinema
+                            ? "hover:border-amber-500/40 focus-visible:ring-amber-400"
+                            : "hover:border-sky-500/40 focus-visible:ring-sky-400"
+                        }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 group-hover:scale-105 transition-transform">
+                          <div
+                            className={`p-2 rounded-lg group-hover:scale-105 transition-transform ${
+                              isCinema
+                                ? "bg-amber-500/10 text-amber-400"
+                                : "bg-sky-500/10 text-sky-400"
+                            }`}
+                          >
                             <Calendar className="w-4 h-4" aria-hidden="true" />
                           </div>
                           <div>
-                            <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors">
-                              Puzzle Archive
+                            <span
+                              className={`text-xs font-bold text-slate-200 transition-colors ${
+                                isCinema
+                                  ? "group-hover:text-amber-300"
+                                  : "group-hover:text-sky-300"
+                              }`}
+                            >
+                              {isCinema ? "Puzzle Archive" : "Series Archive"}
                             </span>
                             <p className="text-[10px] text-slate-400">
-                              Play past cinema mysteries
+                              {isCinema
+                                ? "Play past cinema mysteries"
+                                : "Play past television mysteries"}
                             </p>
                           </div>
                         </div>
                         <ArrowRight
-                          className="w-4 h-4 text-slate-400 group-hover:text-amber-400"
+                          className={`w-4 h-4 text-slate-400 ${
+                            isCinema
+                              ? "group-hover:text-amber-400"
+                              : "group-hover:text-sky-400"
+                          }`}
                           aria-hidden="true"
                         />
                       </button>
