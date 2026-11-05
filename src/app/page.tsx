@@ -832,6 +832,15 @@ export default function Home() {
 
           {/* Desktop Only: Puzzle Archive & User Profile / Sign In */}
           <div className="hidden sm:flex items-center gap-2">
+            <Link
+              href="/series"
+              className="min-h-[38px] px-3 flex items-center gap-1.5 rounded-full bg-slate-900 border border-sky-500/40 text-sky-300 hover:text-sky-200 hover:bg-sky-950/40 active:scale-95 transition-all text-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              title="Play 40 Clues: TV Series Edition"
+            >
+              <Tv className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
+              <span>Series Edition</span>
+            </Link>
+
             <button
               onClick={() => setIsArchiveOpen(true)}
               className="min-h-[38px] px-3 flex items-center gap-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
@@ -1012,6 +1021,35 @@ export default function Home() {
 
               {/* Navigation list in Mobile Menu */}
               <nav aria-label="Menu navigation" className="flex flex-col gap-2">
+                {/* 40 Clues: Series Edition Link */}
+                <Link
+                  href="/series"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full min-h-[48px] px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-sky-950/60 to-slate-900 border border-sky-500/40 hover:border-sky-400 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-sky-500/20 text-sky-400 group-hover:scale-105 transition-transform">
+                      <Tv className="w-4 h-4" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-sky-200 group-hover:text-white transition-colors">
+                          40 Clues: Series Edition
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                          NEW
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Guess today&apos;s secret TV series
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-sky-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+
                 {/* Puzzle Archive with clear text */}
                 <button
                   onClick={() => {

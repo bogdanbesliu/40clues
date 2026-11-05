@@ -748,6 +748,16 @@ export default function SeriesHome() {
               <span className="hidden sm:inline">Rankings</span>
             </button>
 
+            {/* Desktop link to Cinema Edition */}
+            <Link
+              href="/"
+              className="hidden sm:flex min-h-[38px] px-3 items-center gap-1.5 rounded-full bg-slate-900 border border-amber-500/40 text-amber-300 hover:text-amber-200 hover:bg-amber-950/40 active:scale-95 transition-all text-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              title="Play 40 Clues: Cinema Edition"
+            >
+              <Film className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+              <span>Cinema Edition</span>
+            </Link>
+
             {user ? (
               <div className="relative">
                 <Link
@@ -791,12 +801,36 @@ export default function SeriesHome() {
         {/* Mobile Dropdown */}
         {isMobileMenuOpen && (
           <div className="sm:hidden border-t border-slate-800 bg-slate-950 p-4 space-y-2 animate-in slide-in-from-top-2 duration-150">
+            {/* 40 Clues: Cinema Edition Link */}
+            <Link
+              href="/"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full text-left px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-950/50 to-slate-900 border border-amber-500/30 hover:border-amber-400 flex items-center justify-between transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-h-[44px]"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform">
+                  <Film className="w-4 h-4" aria-hidden="true" />
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-amber-200 group-hover:text-white transition-colors block">
+                    40 Clues: Cinema Edition
+                  </span>
+                  <span className="text-[10px] text-slate-400 block">
+                    Guess today&apos;s mystery film
+                  </span>
+                </div>
+              </div>
+              <span className="text-xs text-amber-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
+                →
+              </span>
+            </Link>
+
             <button
               onClick={() => {
                 setIsHowToPlayOpen(true);
                 setIsMobileMenuOpen(false);
               }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold"
+              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px]"
             >
               <HelpCircle className="w-4 h-4 text-slate-400" />
               <span>How to Play</span>
