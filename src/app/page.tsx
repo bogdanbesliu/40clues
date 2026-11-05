@@ -20,6 +20,7 @@ import {
   Calendar,
   X,
   Flag,
+  Tv,
 } from "lucide-react";
 import Link from "next/link";
 import MovieSearchInput from "@/components/MovieSearchInput";
@@ -1446,6 +1447,30 @@ export default function Home() {
 
             {/* Live countdown timer until next mystery movie */}
             <NextGameCountdown onRefresh={initGame} />
+
+            {/* Cross-Promotion Link to TV Series Edition */}
+            <div className="w-full bg-gradient-to-r from-sky-500/10 via-slate-950/80 to-sky-500/10 border border-sky-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-left shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-500/40 flex items-center justify-center text-sky-400 flex-shrink-0">
+                  <Tv className="w-5 h-5" aria-hidden="true" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-100">
+                    Want to test your TV trivia?
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Deduce today&apos;s secret show on 40 Clues TV Series Edition
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/series"
+                className="w-full sm:w-auto min-h-[44px] px-5 py-2.5 bg-sky-500 hover:bg-sky-400 text-slate-950 font-black text-xs rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+              >
+                <span>Play TV Series Edition</span>
+                <span>→</span>
+              </Link>
+            </div>
 
             {/* View unrevealed clues */}
             <button

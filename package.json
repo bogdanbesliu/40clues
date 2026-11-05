@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "check:models": "tsx scripts/check-models.ts",
-    "generate:daily": "tsx scripts/run.ts"
+    "generate:daily": "tsx scripts/run.ts",
+    "generate:daily-tv": "tsx scripts/generate-daily-tv.ts"
   },
   "dependencies": {
     "@google/genai": "^2.30.0",
