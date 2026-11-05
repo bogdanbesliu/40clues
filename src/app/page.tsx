@@ -4,19 +4,11 @@ import React, { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import {
   Sparkles,
-  Trophy,
   Share2,
-  Check,
-  Flame,
-  LogIn,
-  LogOut,
   ChevronDown,
   ChevronUp,
   Film,
-  HelpCircle,
   FastForward,
-  User,
-  Menu,
   Calendar,
   X,
   Flag,
@@ -32,6 +24,7 @@ import ShareModal from "@/components/ShareModal";
 import ArchiveModal from "@/components/ArchiveModal";
 import GuestNameModal from "@/components/GuestNameModal";
 import GiveUpModal from "@/components/GiveUpModal";
+import HeaderNavigation from "@/components/HeaderNavigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 import { normalizeMovieTitle } from "@/lib/utils";
@@ -94,7 +87,6 @@ export default function Home() {
     gameDate: string;
   } | null>(null);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showRemainingClues, setShowRemainingClues] = useState(false);
 
   const [message, setMessage] = useState("");
@@ -103,8 +95,6 @@ export default function Home() {
   const [isShakeActive, setIsShakeActive] = useState(false);
   const [isClueFading, setIsClueFading] = useState(false);
   const [animatedScore, setAnimatedScore] = useState<number>(0);
-  const mobileMenuRef = useRef<HTMLDivElement>(null);
-  const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
   const giveUpBtnRef = useRef<HTMLButtonElement>(null);
 
   const supabase = createBrowserClient(
@@ -179,44 +169,6 @@ export default function Home() {
       return () => clearInterval(timer);
     }
   }, [hasWon, currentPotentialScore]);
-
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-      const focusable = mobileMenuRef.current?.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      if (focusable && focusable.length > 0) {
-        focusable[0].focus();
-      }
-
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") {
-          setIsMobileMenuOpen(false);
-          hamburgerBtnRef.current?.focus();
-          return;
-        }
-        if (e.key === "Tab" && focusable && focusable.length > 0) {
-          const first = focusable[0];
-          const last = focusable[focusable.length - 1];
-          if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-          } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      };
-
-      window.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.body.style.overflow = "";
-        window.removeEventListener("keydown", handleKeyDown);
-        hamburgerBtnRef.current?.focus();
-      };
-    }
-  }, [isMobileMenuOpen]);
 
   const checkAndSyncPendingLocalScore = async (_userId: string) => {
     const today = new Date().toISOString().split("T")[0];
@@ -783,376 +735,22 @@ export default function Home() {
   const progressPercent = Math.min(100, Math.round((clueNumber / totalClues) * 100));
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center px-4 py-6 sm:py-8 font-sans selection:bg-amber-500/30">
-      {/* Header */}
-      <header className="max-w-xl w-full flex items-center justify-between border-b border-slate-800/80 pb-4 mb-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
-            40Clues
-          </h1>
-          <p className="text-[11px] sm:text-xs uppercase tracking-widest text-slate-300 font-bold mt-0.5">
-            Cinema Edition
-          </p>
-        </div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500/30 antialiased">
+      <HeaderNavigation
+        edition="cinema"
+        user={user}
+        streak={streak}
+        onOpenHowToPlay={handleOpenHowToPlay}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenArchive={() => setIsArchiveOpen(true)}
+        onOpenFeedback={() => setIsFeedbackOpen(true)}
+        onSignOut={handleSignOut}
+        onGoogleLogin={handleGoogleLogin}
+        showPing={!user && !hasSeenHowToPlay && streak === 0 && unlockedClues.length <= 1}
+        containerClassName="max-w-2xl"
+      />
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {streak > 0 && (
-            <div
-              aria-label={`${streak} day win streak`}
-              className="h-[44px] px-3 flex items-center justify-center gap-1.5 text-xs font-bold text-orange-300 bg-orange-950/70 border border-orange-800/80 rounded-full shadow-sm"
-            >
-              <Flame className="w-3.5 h-3.5 fill-orange-400 text-orange-400" aria-hidden="true" />
-              <span>{streak}</span>
-            </div>
-          )}
-
-          <button
-            onClick={handleOpenHowToPlay}
-            className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            title="How to Play"
-            aria-label="How to Play"
-          >
-            <HelpCircle className="w-4 h-4" aria-hidden="true" />
-            {!user && !hasSeenHowToPlay && streak === 0 && unlockedClues.length <= 1 && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3" aria-hidden="true">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setIsLeaderboardOpen(true)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            title="Leaderboards"
-            aria-label="Leaderboards"
-          >
-            <Trophy className="w-4 h-4" aria-hidden="true" />
-          </button>
-
-          {/* Desktop Only: Puzzle Archive & User Profile / Sign In */}
-          <div className="hidden sm:flex items-center gap-2">
-            <Link
-              href="/series"
-              className="min-h-[38px] px-3 flex items-center gap-1.5 rounded-full bg-slate-900 border border-sky-500/40 text-sky-300 hover:text-sky-200 hover:bg-sky-950/40 active:scale-95 transition-all text-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-              title="Play 40 Clues: TV Series Edition"
-            >
-              <Tv className="w-3.5 h-3.5 text-sky-400" aria-hidden="true" />
-              <span>Series Edition</span>
-            </Link>
-
-            <button
-              onClick={() => setIsArchiveOpen(true)}
-              className="min-h-[38px] px-3 flex items-center gap-1.5 rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              title="Puzzle Archive"
-              aria-label="Puzzle Archive"
-            >
-              <Calendar className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-              <span>Archive</span>
-            </button>
-
-            {user ? (
-              <div className="flex items-center gap-1.5">
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-amber-500/50 hover:bg-slate-800/80 transition-all shadow-sm group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  title="My Profile"
-                  aria-label={`My Profile (${user.user_metadata?.full_name || user.email || "User"})`}
-                >
-                  {user.user_metadata?.avatar_url ? (
-                    <img
-                      src={user.user_metadata.avatar_url}
-                      alt=""
-                      aria-hidden="true"
-                      className="w-6 h-6 rounded-full border border-amber-400/80 object-cover"
-                    />
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-xs" aria-hidden="true">
-                      {(user.email || "U").charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <span className="text-xs font-semibold text-slate-300 group-hover:text-amber-300">
-                    Profile
-                  </span>
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-rose-400 active:scale-95 rounded-lg border border-slate-800 transition-all p-2 hover:bg-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                  title="Sign Out"
-                  aria-label="Sign Out"
-                >
-                  <LogOut className="w-4 h-4" aria-hidden="true" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleGoogleLogin}
-                className="min-h-[38px] flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 hover:border-amber-500/50 text-xs font-bold px-3 py-1.5 rounded-xl transition-all shadow-sm active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                <User className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                <span>Sign In</span>
-              </button>
-            )}
-          </div>
-
-          {/* Mobile Only: Hamburger Menu Button */}
-          <button
-            ref={hamburgerBtnRef}
-            type="button"
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="sm:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full bg-slate-900 border border-slate-700/80 text-slate-300 hover:text-amber-400 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            title="Open Menu"
-            aria-label="Open Navigation Menu"
-            aria-expanded={isMobileMenuOpen}
-          >
-            <Menu className="w-4 h-4" aria-hidden="true" />
-          </button>
-        </div>
-      </header>
-
-      {/* Mobile Drawer Navigation Menu */}
-      {isMobileMenuOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation menu"
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex justify-end animate-in fade-in duration-200"
-          onClick={() => setIsMobileMenuOpen(false)}
-        >
-          <div
-            ref={mobileMenuRef}
-            className="bg-slate-900 border-l border-slate-800 w-full max-w-xs h-full p-5 flex flex-col justify-between shadow-2xl animate-in slide-in-from-right duration-200"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col gap-4">
-              {/* Drawer Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div>
-                  <span className="text-xl font-black bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 bg-clip-text text-transparent">
-                    40Clues
-                  </span>
-                  <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">
-                    Cinema Edition
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-slate-100 rounded-xl hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                  aria-label="Close menu"
-                >
-                  <X className="w-5 h-5" aria-hidden="true" />
-                </button>
-              </div>
-
-              {/* User Card / Sign In in Mobile Menu */}
-              <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
-                {user ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-2.5">
-                      {user.user_metadata?.avatar_url ? (
-                        <img
-                          src={user.user_metadata.avatar_url}
-                          alt=""
-                          aria-hidden="true"
-                          className="w-10 h-10 rounded-full border border-amber-400/80 object-cover"
-                        />
-                      ) : (
-                        <div
-                          className="w-10 h-10 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center text-sm"
-                          aria-hidden="true"
-                        >
-                          {(user.email || "U").charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-100 truncate">
-                          {user.user_metadata?.full_name || user.email?.split("@")[0] || "Detective"}
-                        </p>
-                        <p className="text-[11px] text-slate-400 truncate">
-                          {user.email}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-800/80">
-                      <Link
-                        href="/profile"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex-1 min-h-[44px] py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                      >
-                        <User className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-                        <span>Profile & Stats</span>
-                      </Link>
-                      <button
-                        onClick={() => {
-                          handleSignOut();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="min-h-[44px] py-2 px-3 bg-slate-800/60 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700/60 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                        aria-label="Sign Out"
-                      >
-                        <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
-                        <span>Exit</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2.5">
-                    <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
-                      <User className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                      <span>Guest Player</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      Sign in to unlock past archive puzzles, save scores, and earn detective badges!
-                    </p>
-                    <button
-                      onClick={() => {
-                        handleGoogleLogin();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      className="w-full min-h-[44px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
-                    >
-                      <LogIn className="w-4 h-4" aria-hidden="true" />
-                      <span>Sign in with Google</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Navigation list in Mobile Menu */}
-              <nav aria-label="Menu navigation" className="flex flex-col gap-2">
-                {/* 40 Clues: Series Edition Link */}
-                <Link
-                  href="/series"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full min-h-[48px] px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-sky-950/60 to-slate-900 border border-sky-500/40 hover:border-sky-400 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-sky-500/20 text-sky-400 group-hover:scale-105 transition-transform">
-                      <Tv className="w-4 h-4" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-sky-200 group-hover:text-white transition-colors">
-                          40 Clues: Series Edition
-                        </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                          NEW
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-400">
-                        Guess today&apos;s secret TV series
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-sky-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
-                    →
-                  </span>
-                </Link>
-
-                {/* Puzzle Archive with clear text */}
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setIsArchiveOpen(true);
-                  }}
-                  className="w-full min-h-[48px] px-3.5 py-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-800 hover:border-amber-500/40 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 group-hover:scale-105 transition-transform">
-                      <Calendar className="w-4 h-4" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors">
-                        Puzzle Archive
-                      </span>
-                      <p className="text-[10px] text-slate-400">
-                        {user ? "Play past cinema mysteries" : "Free for members • Past puzzles"}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-slate-400 group-hover:text-amber-400" aria-hidden="true">
-                    →
-                  </span>
-                </button>
-
-                {/* Leaderboards */}
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setIsLeaderboardOpen(true);
-                  }}
-                  className="w-full min-h-[48px] px-3.5 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800/70 hover:border-amber-500/40 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 group-hover:scale-105 transition-transform">
-                      <Trophy className="w-4 h-4" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors">
-                        Leaderboards
-                      </span>
-                      <p className="text-[10px] text-slate-400">
-                        Daily and all-time rankings
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-slate-400 group-hover:text-amber-400" aria-hidden="true">
-                    →
-                  </span>
-                </button>
-
-                {/* How to Play */}
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    handleOpenHowToPlay();
-                  }}
-                  className="w-full min-h-[48px] px-3.5 py-2.5 rounded-xl bg-slate-800/40 hover:bg-slate-800 border border-slate-800/70 hover:border-amber-500/40 flex items-center justify-between text-left transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-slate-800 text-slate-300 group-hover:text-amber-400 transition-colors">
-                      <HelpCircle className="w-4 h-4" aria-hidden="true" />
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition-colors">
-                        How to Play
-                      </span>
-                      <p className="text-[10px] text-slate-400">
-                        Rules, hints & scoring
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs text-slate-400 group-hover:text-amber-400" aria-hidden="true">
-                    →
-                  </span>
-                </button>
-              </nav>
-            </div>
-
-            {/* Drawer Footer Links */}
-            <div className="pt-4 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsFeedbackOpen(true);
-                }}
-                className="p-2 -m-2 min-h-[44px] flex items-center hover:text-amber-400 transition-colors underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-              >
-                Feedback
-              </button>
-              <Link
-                href="/privacy"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2 -m-2 min-h-[44px] flex items-center hover:text-amber-400 transition-colors underline underline-offset-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded"
-              >
-                Privacy Policy
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
+      <main className="flex-1 flex flex-col items-center px-4 py-6 sm:py-8">
       {/* Historical Archive Puzzle Banner */}
       {gameDate && gameDate !== new Date().toISOString().split("T")[0] && (
         <aside
@@ -1629,6 +1227,7 @@ export default function Home() {
           </Link>
         </div>
       </footer>
+      </main>
 
       {/* Modals */}
       <ArchiveModal
@@ -1694,6 +1293,6 @@ export default function Home() {
         streak={streak}
         onLogin={handleGoogleLogin}
       />
-    </main>
+    </div>
   );
 }

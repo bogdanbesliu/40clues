@@ -3,25 +3,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import {
-  Sparkles,
-  Trophy,
   Share2,
-  Check,
-  Flame,
-  LogIn,
-  LogOut,
   ChevronDown,
   ChevronUp,
   Tv,
-  HelpCircle,
   FastForward,
-  User,
-  Menu,
-  Calendar,
   X,
   Flag,
   Film,
-  Layers,
 } from "lucide-react";
 import Link from "next/link";
 import SeriesSearchInput from "@/components/SeriesSearchInput";
@@ -32,6 +21,7 @@ import NextGameCountdown from "@/components/NextGameCountdown";
 import SeriesShareModal from "@/components/SeriesShareModal";
 import GuestNameModal from "@/components/GuestNameModal";
 import SeriesGiveUpModal from "@/components/SeriesGiveUpModal";
+import HeaderNavigation from "@/components/HeaderNavigation";
 import { createBrowserClient } from "@supabase/ssr";
 import { getClueBadge } from "@/lib/clueCategories";
 import { normalizeMovieTitle } from "@/lib/utils";
@@ -93,7 +83,6 @@ export default function SeriesHome() {
     gameDate: string;
   } | null>(null);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showRemainingClues, setShowRemainingClues] = useState(false);
 
   const [message, setMessage] = useState("");
@@ -104,11 +93,8 @@ export default function SeriesHome() {
 
   const cardRef = useRef<HTMLDivElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
-  const howToPlayTriggerRef = useRef<HTMLButtonElement>(null);
-  const leaderboardTriggerRef = useRef<HTMLButtonElement>(null);
   const giveUpTriggerRef = useRef<HTMLButtonElement>(null);
   const guestNameTriggerRef = useRef<HTMLButtonElement>(null);
-  const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -117,19 +103,6 @@ export default function SeriesHome() {
 
   // Score calculation: 1000 base - penalties, floor at 25
   const currentPotentialScore = Math.max(25, 1000 - scorePenalty);
-
-  // Close mobile dropdown on Escape
-  useEffect(() => {
-    if (!isMobileMenuOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsMobileMenuOpen(false);
-        hamburgerBtnRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isMobileMenuOpen]);
 
   // Auth listener
   useEffect(() => {
@@ -691,14 +664,13 @@ export default function SeriesHome() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
-    setIsMobileMenuOpen(false);
   };
 
   const currentClueText = unlockedClues[clueNumber - 1] || "Decoding clue...";
   const clueBadge = getClueBadge(currentClueText, clueNumber);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-amber-500 selection:text-slate-950 antialiased">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-sky-500/30 selection:text-sky-100 antialiased">
       {/* Live accessibility announcements */}
       <div
         ref={liveRegionRef}
@@ -710,197 +682,17 @@ export default function SeriesHome() {
       </div>
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/80">
-        <div className="max-w-2xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/series"
-              className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded-lg p-1"
-            >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-amber-500 flex items-center justify-center shadow-lg shadow-sky-500/20 text-slate-950 font-black">
-                <Tv className="w-5 h-5 text-slate-950" aria-hidden="true" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-extrabold text-lg sm:text-xl tracking-tight bg-gradient-to-r from-slate-100 via-slate-200 to-amber-400 bg-clip-text text-transparent">
-                  40Clues
-                </span>
-                <span className="text-[10px] font-bold text-sky-400 tracking-wider uppercase -mt-1">
-                  TV Series Edition
-                </span>
-              </div>
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {streak > 0 && (
-              <div
-                className="flex items-center gap-1 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-full text-xs font-bold text-amber-400"
-                title={`${streak}-day active streak`}
-              >
-                <Flame className="w-3.5 h-3.5 fill-amber-400" aria-hidden="true" />
-                <span>{streak}</span>
-              </div>
-            )}
-
-            <button
-              ref={howToPlayTriggerRef}
-              onClick={() => setIsHowToPlayOpen(true)}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-w-[44px] min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-semibold"
-              aria-label="How to play instructions"
-            >
-              <HelpCircle className="w-4 h-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Rules</span>
-            </button>
-
-            <button
-              ref={leaderboardTriggerRef}
-              onClick={() => setIsLeaderboardOpen(true)}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-w-[44px] min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-semibold"
-              aria-label="View TV leaderboards"
-            >
-              <Trophy className="w-4 h-4 text-amber-400" aria-hidden="true" />
-              <span className="hidden sm:inline">Rankings</span>
-            </button>
-
-            {/* Desktop link to Cinema Edition */}
-            <Link
-              href="/"
-              className="hidden sm:flex min-h-[38px] px-3 items-center gap-1.5 rounded-full bg-slate-900 border border-amber-500/40 text-amber-300 hover:text-amber-200 hover:bg-amber-950/40 active:scale-95 transition-all text-xs font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              title="Play 40 Clues: Cinema Edition"
-            >
-              <Film className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
-              <span>Cinema Edition</span>
-            </Link>
-
-            {user ? (
-              <div className="relative">
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-slate-200 hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-h-[44px]"
-                >
-                  <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center">
-                    {user.user_metadata?.avatar_url ? (
-                      <img src={user.user_metadata.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
-                    )}
-                  </div>
-                  <span className="hidden sm:inline text-xs font-bold truncate max-w-[90px]">
-                    {user.user_metadata?.full_name?.split(" ")[0] || "Profile"}
-                  </span>
-                </Link>
-              </div>
-            ) : (
-              <button
-                onClick={handleLogin}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-              >
-                <LogIn className="w-3.5 h-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">Sign In</span>
-              </button>
-            )}
-
-            {/* Mobile hamburger menu */}
-            <button
-              ref={hamburgerBtnRef}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-expanded={isMobileMenuOpen}
-              aria-label="Toggle mobile menu"
-              className="p-2 text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-xl sm:hidden min-w-[44px] min-h-[44px] flex items-center justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
-            >
-              <Menu className="w-5 h-5" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Dropdown */}
-        {isMobileMenuOpen && (
-          <div className="sm:hidden border-t border-slate-800 bg-slate-950 p-4 space-y-2 animate-in slide-in-from-top-2 duration-150">
-            {/* 40 Clues: Cinema Edition Link */}
-            <Link
-              href="/"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="w-full text-left px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-950/50 to-slate-900 border border-amber-500/30 hover:border-amber-400 flex items-center justify-between transition-all group focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-h-[44px]"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400 group-hover:scale-105 transition-transform">
-                  <Film className="w-4 h-4" aria-hidden="true" />
-                </div>
-                <div>
-                  <span className="text-xs font-bold text-amber-200 group-hover:text-white transition-colors block">
-                    40 Clues: Cinema Edition
-                  </span>
-                  <span className="text-[10px] text-slate-400 block">
-                    Guess today&apos;s mystery film
-                  </span>
-                </div>
-              </div>
-              <span className="text-xs text-amber-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true">
-                →
-              </span>
-            </Link>
-
-            <button
-              onClick={() => {
-                setIsHowToPlayOpen(true);
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
-            >
-              <HelpCircle className="w-4 h-4 text-slate-400" aria-hidden="true" />
-              <span>How to Play</span>
-            </button>
-            <button
-              onClick={() => {
-                setIsLeaderboardOpen(true);
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
-            >
-              <Trophy className="w-4 h-4 text-amber-400" aria-hidden="true" />
-              <span>TV Leaderboard</span>
-            </button>
-            <button
-              onClick={() => {
-                setIsFeedbackOpen(true);
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
-            >
-              <Sparkles className="w-4 h-4 text-indigo-400" aria-hidden="true" />
-              <span>Send Feedback</span>
-            </button>
-
-            {user ? (
-              <>
-                <Link
-                  href="/profile"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-slate-200 hover:bg-slate-900 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 transition-colors"
-                >
-                  <User className="w-4 h-4 text-emerald-400" aria-hidden="true" />
-                  <span>My Profile</span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-3 py-2.5 rounded-xl text-rose-400 hover:bg-rose-950/30 flex items-center gap-2.5 text-xs font-semibold min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 transition-colors"
-                >
-                  <LogOut className="w-4 h-4" aria-hidden="true" />
-                  <span>Sign Out</span>
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={handleLogin}
-                className="w-full text-left px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold flex items-center gap-2.5 text-xs min-h-[44px] focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 transition-colors shadow-sm"
-              >
-                <LogIn className="w-4 h-4" aria-hidden="true" />
-                <span>Sign in with Google</span>
-              </button>
-            )}
-          </div>
-        )}
-      </header>
+      <HeaderNavigation
+        edition="series"
+        user={user}
+        streak={streak}
+        onOpenHowToPlay={() => setIsHowToPlayOpen(true)}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenFeedback={() => setIsFeedbackOpen(true)}
+        onSignOut={handleLogout}
+        onGoogleLogin={handleLogin}
+        containerClassName="max-w-2xl"
+      />
 
       {/* Main Game Arena */}
       <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 sm:py-8 flex flex-col gap-5 sm:gap-6">
