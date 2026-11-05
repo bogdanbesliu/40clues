@@ -93,41 +93,70 @@ Guidelines for the 40 clues:
   const candidateModels = getCandidateModels();
   let clues: string[] | null = null;
   let lastError: any = null;
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   for (const modelName of candidateModels) {
-    console.log(`🤖 Attempting clue generation with Gemini model: "${modelName}"...`);
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.STRING,
+    let modelAttempt = 0;
+    const maxRetriesPerModel = 3;
+
+    while (modelAttempt < maxRetriesPerModel) {
+      modelAttempt++;
+      console.log(
+        `🤖 Attempting clue generation with Gemini model: "${modelName}" (attempt ${modelAttempt}/${maxRetriesPerModel})...`
+      );
+
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.STRING,
+              },
             },
           },
-        },
-      });
+        });
 
-      const rawJson = response.text;
-      if (!rawJson) {
-        throw new Error("No response received from Gemini API");
-      }
+        const rawJson = response.text;
+        if (!rawJson) {
+          throw new Error("No response received from Gemini API");
+        }
 
-      const parsed: string[] = JSON.parse(rawJson);
-      if (Array.isArray(parsed) && parsed.length >= 40) {
-        clues = parsed.slice(0, 40);
-        console.log(`✅ Successfully generated ${clues.length} clues using model "${modelName}"!`);
-        break;
-      } else {
-        throw new Error(`Invalid clue count generated: expected 40, got ${parsed?.length}`);
+        const parsed: string[] = JSON.parse(rawJson);
+        if (Array.isArray(parsed) && parsed.length >= 40) {
+          clues = parsed.slice(0, 40);
+          console.log(`✅ Successfully generated ${clues.length} clues using model "${modelName}"!`);
+          break;
+        } else {
+          throw new Error(`Invalid clue count generated: expected 40, got ${parsed?.length}`);
+        }
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = err?.message || String(err);
+        const isTransient =
+          errMsg.includes("503") ||
+          errMsg.includes("429") ||
+          errMsg.includes("high demand") ||
+          errMsg.includes("UNAVAILABLE") ||
+          errMsg.includes("RESOURCE_EXHAUSTED");
+
+        console.warn(`⚠️ Warning: Model "${modelName}" attempt ${modelAttempt} failed:`, errMsg);
+
+        if (isTransient && modelAttempt < maxRetriesPerModel) {
+          const backoffMs = modelAttempt * 3000;
+          console.log(`⏳ Temporary spike in demand detected. Retrying in ${backoffMs / 1000}s...`);
+          await sleep(backoffMs);
+        } else {
+          break;
+        }
       }
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`⚠️ Warning: Model "${modelName}" failed:`, err?.message || err);
-      console.warn("Retrying with next candidate model if available...");
+    }
+
+    if (clues && clues.length >= 40) {
+      break;
     }
   }
 

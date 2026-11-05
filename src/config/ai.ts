@@ -6,8 +6,8 @@
 export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 
 export const FALLBACK_GEMINI_MODELS = [
+  "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
-  "gemini-3.8-pro",
 ] as const;
 
 export const DEPRECATED_GEMINI_MODELS = [
