@@ -14,7 +14,6 @@ import {
   LogIn,
   Menu,
   X,
-  ChevronDown,
   Sparkles,
   Shield,
   ArrowRight,
@@ -259,38 +258,6 @@ export default function HeaderNavigation({
               </div>
             )}
 
-            {/* How to Play Button */}
-            <button
-              type="button"
-              onClick={onOpenHowToPlay}
-              className={`relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-700/80 text-slate-300 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 ${
-                isCinema
-                  ? "hover:text-amber-400 focus-visible:ring-amber-400"
-                  : "hover:text-sky-400 focus-visible:ring-sky-400"
-              }`}
-              title="How to Play & Rules"
-              aria-label="How to Play"
-            >
-              <HelpCircle className="w-4 h-4" aria-hidden="true" />
-              {showPing && (
-                <span
-                  className="absolute -top-1 -right-1 flex h-3 w-3"
-                  aria-hidden="true"
-                >
-                  <span
-                    className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                      isCinema ? "bg-amber-400" : "bg-sky-400"
-                    }`}
-                  ></span>
-                  <span
-                    className={`relative inline-flex rounded-full h-3 w-3 ${
-                      isCinema ? "bg-amber-500" : "bg-sky-500"
-                    }`}
-                  ></span>
-                </span>
-              )}
-            </button>
-
             {/* Leaderboards Button */}
             <button
               type="button"
@@ -306,67 +273,43 @@ export default function HeaderNavigation({
               <Trophy className="w-4 h-4" aria-hidden="true" />
             </button>
 
-            {/* Consolidated Dropdown Trigger Button */}
+            {/* Consolidated Menu Trigger Button */}
             <div className="relative">
               <button
                 ref={menuTriggerBtnRef}
                 type="button"
                 onClick={handleMenuTriggerClick}
-                className={`min-h-[44px] flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700/80 text-slate-200 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 ${activeFocusRing} ${
+                className={`relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-slate-900 border border-slate-700/80 text-slate-200 hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 ${activeFocusRing} ${
                   isDesktopDropdownOpen
                     ? isCinema
-                      ? "border-amber-500/60 ring-2 ring-amber-400/40"
-                      : "border-sky-500/60 ring-2 ring-sky-400/40"
+                      ? "border-amber-500/60 ring-2 ring-amber-400/40 text-amber-400"
+                      : "border-sky-500/60 ring-2 ring-sky-400/40 text-sky-400"
                     : ""
                 }`}
                 title="Open menu"
-                aria-label="Open menu and account options"
+                aria-label="Open navigation menu"
                 aria-haspopup="menu"
                 aria-expanded={isDesktopDropdownOpen || isMobileMenuOpen}
                 aria-controls="desktop-header-dropdown"
               >
-                {user ? (
-                  <div className="flex items-center gap-2">
-                    {user.user_metadata?.avatar_url ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={user.user_metadata.avatar_url}
-                        alt=""
-                        aria-hidden="true"
-                        className={`w-6 h-6 rounded-full border object-cover ${
-                          isCinema ? "border-amber-400/80" : "border-sky-400/80"
-                        }`}
-                      />
-                    ) : (
-                      <div
-                        className={`w-6 h-6 rounded-full font-bold flex items-center justify-center text-xs ${
-                          isCinema
-                            ? "bg-amber-500/20 text-amber-400"
-                            : "bg-sky-500/20 text-sky-400"
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {(user.email || "U").charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="hidden sm:inline text-xs font-semibold text-slate-200 max-w-[80px] truncate">
-                      {user.user_metadata?.full_name?.split(" ")[0] || "Profile"}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <Menu className="w-4 h-4 text-slate-300" aria-hidden="true" />
-                    <span className="hidden sm:inline text-xs font-bold text-slate-200">
-                      Menu
-                    </span>
-                  </div>
+                <Menu className="w-5 h-5 text-slate-200" aria-hidden="true" />
+                {showPing && (
+                  <span
+                    className="absolute -top-1 -right-1 flex h-3 w-3"
+                    aria-hidden="true"
+                  >
+                    <span
+                      className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        isCinema ? "bg-amber-400" : "bg-sky-400"
+                      }`}
+                    ></span>
+                    <span
+                      className={`relative inline-flex rounded-full h-3 w-3 ${
+                        isCinema ? "bg-amber-500" : "bg-sky-500"
+                      }`}
+                    ></span>
+                  </span>
                 )}
-                <ChevronDown
-                  className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
-                    isDesktopDropdownOpen ? "rotate-180" : ""
-                  }`}
-                  aria-hidden="true"
-                />
               </button>
 
               {/* Desktop Floating Dropdown Menu */}
@@ -594,6 +537,52 @@ export default function HeaderNavigation({
 
                   <div className="my-1 border-t border-slate-800/80" />
 
+                  {/* 4. How to Play */}
+                  <div className="px-1.5 py-1">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setIsDesktopDropdownOpen(false);
+                        onOpenHowToPlay();
+                      }}
+                      className={`w-full flex items-center justify-between p-2 rounded-xl text-slate-200 hover:bg-slate-800/80 transition-colors group focus:outline-none focus-visible:ring-2 ${activeFocusRing}`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <HelpCircle
+                          className={`w-4 h-4 ${
+                            isCinema ? "text-amber-400" : "text-sky-400"
+                          }`}
+                          aria-hidden="true"
+                        />
+                        <div className="text-left">
+                          <span
+                            className={`text-xs font-bold text-slate-200 block ${
+                              isCinema
+                                ? "group-hover:text-amber-300"
+                                : "group-hover:text-sky-300"
+                            }`}
+                          >
+                            How to Play
+                          </span>
+                          <p className="text-[10px] text-slate-400">
+                            Rules, lifelines & scoring
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight
+                        className={`w-3.5 h-3.5 text-slate-500 group-hover:translate-x-0.5 transition-all ${
+                          isCinema
+                            ? "group-hover:text-amber-400"
+                            : "group-hover:text-sky-400"
+                        }`}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </div>
+
+                  <div className="my-1 border-t border-slate-800/80" />
+
                   {/* Feedback & Privacy */}
                   <div className="px-1.5 py-1 flex items-center justify-between text-[11px] text-slate-400">
                     <button
@@ -603,7 +592,11 @@ export default function HeaderNavigation({
                         setIsDesktopDropdownOpen(false);
                         onOpenFeedback();
                       }}
-                      className="px-2 py-1 rounded hover:text-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 flex items-center gap-1"
+                      className={`px-2 py-1 rounded transition-colors focus:outline-none focus-visible:ring-2 flex items-center gap-1 ${
+                        isCinema
+                          ? "hover:text-amber-400 focus-visible:ring-amber-400"
+                          : "hover:text-sky-400 focus-visible:ring-sky-400"
+                      }`}
                     >
                       <Sparkles className="w-3 h-3 text-indigo-400" aria-hidden="true" />
                       <span>Feedback</span>
@@ -612,7 +605,11 @@ export default function HeaderNavigation({
                       href="/privacy"
                       role="menuitem"
                       onClick={() => setIsDesktopDropdownOpen(false)}
-                      className="px-2 py-1 rounded hover:text-amber-400 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 flex items-center gap-1"
+                      className={`px-2 py-1 rounded transition-colors focus:outline-none focus-visible:ring-2 flex items-center gap-1 ${
+                        isCinema
+                          ? "hover:text-amber-400 focus-visible:ring-amber-400"
+                          : "hover:text-sky-400 focus-visible:ring-sky-400"
+                      }`}
                     >
                       <Shield className="w-3 h-3 text-slate-500" aria-hidden="true" />
                       <span>Privacy</span>
