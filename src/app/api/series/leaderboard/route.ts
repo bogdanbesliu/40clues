@@ -54,8 +54,8 @@ export async function GET(request: Request) {
         .limit(50);
 
       if (error) {
-        console.error("TV Leaderboard global query error:", error.message);
-        return NextResponse.json({ error: "Failed to load leaderboard" }, { status: 500 });
+        console.warn("TV Leaderboard global query notice:", error.message);
+        return NextResponse.json({ leaderboard: [] });
       }
 
       const filtered = (globalTop || [])

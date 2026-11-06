@@ -25,6 +25,7 @@ import SeriesGiveUpModal from "@/components/SeriesGiveUpModal";
 import SeriesArchiveModal from "@/components/SeriesArchiveModal";
 import HeaderNavigation from "@/components/HeaderNavigation";
 import { createBrowserClient } from "@supabase/ssr";
+import type { User } from "@supabase/supabase-js";
 import { getClueBadge } from "@/lib/clueCategories";
 import { normalizeMovieTitle } from "@/lib/utils";
 
@@ -71,7 +72,7 @@ export default function SeriesHome() {
   const [gameDate, setGameDate] = useState<string>("");
   const [streak, setStreak] = useState<number>(0);
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false);
   const [hasSeenHowToPlay, setHasSeenHowToPlay] = useState<boolean>(true);
@@ -97,7 +98,6 @@ export default function SeriesHome() {
   const cardRef = useRef<HTMLDivElement>(null);
   const liveRegionRef = useRef<HTMLDivElement>(null);
   const giveUpTriggerRef = useRef<HTMLButtonElement>(null);
-  const guestNameTriggerRef = useRef<HTMLButtonElement>(null);
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -107,16 +107,77 @@ export default function SeriesHome() {
   // Score calculation: 1000 base - penalties, floor at 25
   const currentPotentialScore = Math.max(25, 1000 - scorePenalty);
 
+  const syncScoreToDatabase = async (
+    cluesUsed: number,
+    score: number,
+    targetDate?: string,
+    customAnonName?: string
+  ) => {
+    try {
+      let anonName = customAnonName || localStorage.getItem("40clues_anon_name");
+      if (!anonName) {
+        anonName = `BingeWatcher_${Math.floor(1000 + Math.random() * 9000)}`;
+        localStorage.setItem("40clues_anon_name", anonName);
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
+      await fetch("/api/series/score", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          gameDate: targetDate || gameDate,
+          cluesUsed,
+          score,
+          anonName,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to sync TV score:", err);
+    }
+  };
+
+  const checkAndSyncPendingLocalScore = async (_userId: string) => {
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const saved = localStorage.getItem(`40clues_tv_progress_${today}`);
+      if (saved) {
+        const parsed: StoredGameProgress = JSON.parse(saved);
+        if (parsed.hasWon || parsed.hasGivenUp) {
+          const score = parsed.hasWon
+            ? Math.max(25, 1000 - (parsed.scorePenalty || 0))
+            : 0;
+          await syncScoreToDatabase(parsed.clueNumber, score, today);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to check and sync pending TV score:", e);
+    }
+  };
+
   // Auth listener
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
+      if (user) {
+        checkAndSyncPendingLocalScore(user.id);
+      }
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const activeUser = session?.user ?? null;
+      setUser(activeUser);
+      if (activeUser) {
+        checkAndSyncPendingLocalScore(activeUser.id);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -241,14 +302,12 @@ export default function SeriesHome() {
     initGame(dateParam);
   }, []);
 
-  // How to play first-time prompt
+  // Load how to play seen status
   useEffect(() => {
-    const hasSeen = localStorage.getItem("40clues_tv_has_seen_how_to_play");
-    if (!hasSeen) {
-      setHasSeenHowToPlay(false);
-      setIsHowToPlayOpen(true);
-      localStorage.setItem("40clues_tv_has_seen_how_to_play", "true");
-    }
+    try {
+      const seen = localStorage.getItem("40clues_tv_has_seen_how_to_play") === "true";
+      setHasSeenHowToPlay(seen);
+    } catch {}
   }, []);
 
   const saveProgress = (
@@ -467,22 +526,10 @@ export default function SeriesHome() {
       setRemainingClues(data.remainingClues || []);
       setHasGivenUp(true);
 
-      const activeStreak = updateStreakOnPlay();
+      updateStreakOnPlay();
 
       if (user) {
-        fetch("/api/series/score", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
-          },
-          body: JSON.stringify({
-            gameDate,
-            cluesUsed: clueNumber,
-            score: 0,
-            anonName: null,
-          }),
-        }).catch((err) => console.error("TV surrender score sync failed:", err));
+        syncScoreToDatabase(clueNumber, 0, gameDate);
       }
 
       saveProgress(
@@ -560,27 +607,11 @@ export default function SeriesHome() {
           });
         }
 
-        const activeStreak = updateStreakOnPlay();
+        updateStreakOnPlay();
 
         // Record score to Supabase
         if (user) {
-          try {
-            await fetch("/api/series/score", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${session?.access_token}`,
-              },
-              body: JSON.stringify({
-                gameDate,
-                cluesUsed: clueNumber,
-                score: wonScore,
-                anonName: null,
-              }),
-            });
-          } catch (e) {
-            console.error("TV Score sync failed:", e);
-          }
+          syncScoreToDatabase(clueNumber, wonScore, gameDate);
         } else {
           setPendingWinData({
             cluesUsed: clueNumber,
@@ -658,16 +689,12 @@ export default function SeriesHome() {
     if (!pendingWinData) return;
     try {
       localStorage.setItem("40clues_anon_name", chosenName);
-      await fetch("/api/series/score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gameDate: pendingWinData.gameDate,
-          cluesUsed: pendingWinData.cluesUsed,
-          score: pendingWinData.score,
-          anonName: chosenName,
-        }),
-      });
+      await syncScoreToDatabase(
+        pendingWinData.cluesUsed,
+        pendingWinData.score,
+        pendingWinData.gameDate,
+        chosenName
+      );
       setIsGuestNameModalOpen(false);
       setIsLeaderboardOpen(true);
     } catch (err) {

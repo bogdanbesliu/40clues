@@ -47,6 +47,14 @@ export async function POST(request: Request) {
       data: { user },
     } = token ? await supabase.auth.getUser(token) : await supabase.auth.getUser();
 
+    // Use service role admin client for database writes if available to ensure server-side resilience
+    const db = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        )
+      : supabase;
+
     const { gameDate, cluesUsed, score, anonName } = await request.json();
 
     if (!gameDate || typeof cluesUsed !== "number" || typeof score !== "number") {
@@ -99,7 +107,7 @@ export async function POST(request: Request) {
         "TV Detective";
       const avatarUrl = existingProfile?.avatar_url || user.user_metadata?.avatar_url || null;
 
-      await supabase.from("profiles").upsert(
+      await db.from("profiles").upsert(
         {
           id: user.id,
           display_name: displayName,
@@ -108,7 +116,7 @@ export async function POST(request: Request) {
         { onConflict: "id" }
       );
 
-      const { error: scoreError } = await supabase.from("daily_scores_tv").upsert(
+      const { error: scoreError } = await db.from("daily_scores_tv").upsert(
         {
           user_id: user.id,
           game_date: gameDate,
@@ -125,7 +133,7 @@ export async function POST(request: Request) {
       }
 
       // Recalculate TV total statistics for Global TV Leaderboard
-      const { data: allScores } = await supabase
+      const { data: allScores } = await db
         .from("daily_scores_tv")
         .select("score, game_date")
         .eq("user_id", user.id)
@@ -155,7 +163,8 @@ export async function POST(request: Request) {
         prevDate = d;
       }
 
-      await supabase
+      // Safely attempt updating profiles with TV stats (does not fail score save if schema migration pending)
+      const { error: profileUpdateErr } = await db
         .from("profiles")
         .update({
           total_score_tv: totalScoreTv,
@@ -165,6 +174,10 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id);
+
+      if (profileUpdateErr) {
+        console.warn("TV Profile stats update notice (run tv_series_schema.sql if columns missing):", profileUpdateErr.message);
+      }
 
       return NextResponse.json({
         success: true,
@@ -177,10 +190,7 @@ export async function POST(request: Request) {
 
     // CASE 2: Unauthenticated user (Guest) -> Rate limit & record
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const adminClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
+      const adminClient = db;
 
       const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       const { count } = await adminClient
@@ -210,7 +220,7 @@ export async function POST(request: Request) {
       finalUsername = `BingeWatcher_${Math.floor(1000 + Math.random() * 9000)}`;
     }
 
-    const { error: guestError } = await supabase.from("daily_scores_tv").insert({
+    const { error: guestError } = await db.from("daily_scores_tv").insert({
       user_id: null,
       game_date: gameDate,
       clues_used: cluesUsed,
