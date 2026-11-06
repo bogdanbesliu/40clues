@@ -821,7 +821,7 @@ export default function SeriesHome() {
                       ref={giveUpTriggerRef}
                       onClick={() => setIsGiveUpModalOpen(true)}
                       disabled={isSubmitting}
-                      className="min-h-[44px] px-3 py-2 bg-slate-800/80 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700/80 hover:border-rose-800/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                      className="min-h-[44px] min-w-[44px] px-3 py-2 bg-slate-800/80 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700/80 hover:border-rose-800/50 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                       aria-label="Give up and reveal secret TV show"
                     >
                       <Flag className="w-3.5 h-3.5 text-rose-400" aria-hidden="true" />
