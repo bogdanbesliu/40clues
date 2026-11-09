@@ -45,6 +45,20 @@ CREATE TABLE IF NOT EXISTS daily_scores_tv (
   CONSTRAINT unique_tv_user_game_date UNIQUE (user_id, game_date)
 );
 
+-- Optional FK to profiles table for PostgREST schema cache join support
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_daily_scores_tv_profiles'
+  ) THEN
+    ALTER TABLE daily_scores_tv
+      ADD CONSTRAINT fk_daily_scores_tv_profiles
+      FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+  END IF;
+EXCEPTION
+  WHEN others THEN NULL;
+END $$;
+
 -- Indexes for performance & leaderboard queries
 CREATE INDEX IF NOT EXISTS idx_daily_scores_tv_date_score
   ON daily_scores_tv (game_date, score DESC, clues_used ASC, created_at ASC);

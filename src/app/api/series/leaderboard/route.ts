@@ -79,17 +79,7 @@ export async function GET(request: Request) {
     // Daily TV Leaderboard
     const { data: dailyTop, error } = await supabase
       .from("daily_scores_tv")
-      .select(`
-        user_id,
-        score,
-        clues_used,
-        anon_name,
-        created_at,
-        profiles (
-          display_name,
-          avatar_url
-        )
-      `)
+      .select("user_id, score, clues_used, anon_name, created_at")
       .eq("game_date", date)
       .order("score", { ascending: false })
       .order("clues_used", { ascending: true })
@@ -101,7 +91,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to load leaderboard" }, { status: 500 });
     }
 
-    const filteredDaily = (dailyTop || [])
+    // Resolve profiles for authenticated users to avoid PostgREST foreign key schema cache issues
+    const userIds = Array.from(
+      new Set((dailyTop || []).map((entry) => entry.user_id).filter(Boolean))
+    );
+
+    const profilesMap: Record<string, { display_name: string; avatar_url: string | null }> = {};
+
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name, avatar_url")
+        .in("id", userIds);
+
+      (profiles || []).forEach((p) => {
+        profilesMap[p.id] = {
+          display_name: p.display_name,
+          avatar_url: p.avatar_url,
+        };
+      });
+    }
+
+    const formattedDaily = (dailyTop || []).map((entry) => {
+      const profile = entry.user_id ? profilesMap[entry.user_id] : null;
+      return {
+        ...entry,
+        profiles: profile
+          ? {
+              display_name: profile.display_name,
+              avatar_url: profile.avatar_url,
+            }
+          : null,
+      };
+    });
+
+    const filteredDaily = formattedDaily
       .filter((entry) => {
         const profile = Array.isArray(entry.profiles) ? entry.profiles[0] : entry.profiles;
         return (
