@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isNameForbidden } from "@/lib/nameModeration";
+import { getClueBadge } from "@/lib/clueCategories";
 
 export async function GET(request: Request) {
   try {
@@ -44,18 +45,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Failed to fetch user scores" }, { status: 500 });
     }
 
-    // 2. Fetch movie titles for history
+    // 2. Fetch movie titles for history & badge computation
     const gameDates = (scores || []).map((s) => s.game_date);
-    const gamesMap: Record<string, { title: string; year: number }> = {};
+    const gamesMap: Record<string, { title: string; year: number; clues?: string[] }> = {};
 
     if (gameDates.length > 0) {
       const { data: games } = await supabase
         .from("daily_games")
-        .select("game_date, title, year")
+        .select("game_date, title, year, clues")
         .in("game_date", gameDates);
 
       (games || []).forEach((g) => {
-        gamesMap[g.game_date] = { title: g.title, year: g.year };
+        gamesMap[g.game_date] = { title: g.title, year: g.year, clues: g.clues };
       });
     }
 
@@ -82,7 +83,22 @@ export async function GET(request: Request) {
 
     let perfectScoresCount = 0;
     let clutchWinsCount = 0;
-    let underFiveCluesCount = 0;
+    let underTenCluesCount = 0;
+    let underTwoCluesCount = 0;
+    let classicPre2000Count = 0;
+    let decade90sCount = 0;
+    let decade00sCount = 0;
+    let decade10sPlusCount = 0;
+    const uniqueDecades = new Set<number>();
+    let singleWordTitleCount = 0;
+    let franchiseCount = 0;
+    let sciFiFantasyCount = 0;
+    let actionCrimeCount = 0;
+    let quoteWinCount = 0;
+    let behindCurtainWinCount = 0;
+
+    const sciFiRegex = /\b(space|planet|alien|aliens|future|futuristic|robot|robots|cyborg|spaceship|galaxy|dimension|time travel|magic|wizard|sorcerer|spell|dragon|superpower|mutant|dystopia|dystopian|cyberpunk|cloning|artificial intelligence|android|starship|interstellar|multiverse|extraterrestrial)\b/i;
+    const actionCrimeRegex = /\b(heist|robbery|murder|detective|cop|police|assassin|hitman|mafia|cartel|gangster|conspiracy|hostage|explosion|shootout|chase|weapon|sniper|spy|espionage|fbi|cia|counter-terrorist|revenge|undercover|martial arts|lethal|bullet)\b/i;
 
     (scores || []).forEach((s) => {
       const c = s.clues_used;
@@ -94,7 +110,42 @@ export async function GET(request: Request) {
 
       if (s.score === 1000) perfectScoresCount++;
       if (c === 40) clutchWinsCount++;
-      if (c <= 5) underFiveCluesCount++;
+      if (c <= 10) underTenCluesCount++;
+      if (c <= 2) underTwoCluesCount++;
+
+      const game = gamesMap[s.game_date];
+      const year = game?.year;
+      const title = game?.title || "";
+      const clues = Array.isArray(game?.clues) ? game.clues : [];
+
+      if (year) {
+        if (year < 2000) classicPre2000Count++;
+        if (year >= 1990 && year <= 1999) decade90sCount++;
+        if (year >= 2000 && year <= 2009) decade00sCount++;
+        if (year >= 2010) decade10sPlusCount++;
+        uniqueDecades.add(Math.floor(year / 10) * 10);
+      }
+
+      if (title) {
+        const trimmedTitle = title.trim();
+        if (!trimmedTitle.includes(" ")) {
+          singleWordTitleCount++;
+        }
+        if (/[:0-9]|\b(part|chapter|vol|ii|iii|iv|v|returns|forever|rises|reloaded|revolution|awakens|strikes)\b/i.test(trimmedTitle)) {
+          franchiseCount++;
+        }
+      }
+
+      if (clues.length >= c && c >= 1) {
+        const winningClue = clues[c - 1] || "";
+        const clueBadge = getClueBadge(winningClue, c);
+        if (clueBadge.label === "Quote / Dialogue") quoteWinCount++;
+        if (clueBadge.label === "Behind the Scenes") behindCurtainWinCount++;
+      }
+
+      const combinedText = `${title} ${clues.join(" ")}`;
+      if (sciFiRegex.test(combinedText)) sciFiFantasyCount++;
+      if (actionCrimeRegex.test(combinedText)) actionCrimeCount++;
     });
 
     // 4. Calculate current streak and max streak
@@ -145,7 +196,7 @@ export async function GET(request: Request) {
       movieYear: gamesMap[s.game_date]?.year || "",
     }));
 
-    // 6. Badges
+    // 6. Badges (26 Total)
     const badges = [
       {
         id: "first_win",
@@ -175,13 +226,67 @@ export async function GET(request: Request) {
         unlocked: maxStreak >= 7,
       },
       {
-        id: "psychic_strike",
-        title: "Cinephile Psychic",
-        desc: "Deduce a film in 3 clues or fewer",
-        icon: "🎯",
-        current: Math.min(1, distribution.psychic),
-        target: 1,
-        unlocked: distribution.psychic >= 1,
+        id: "streak_14",
+        title: "Fortnight Master",
+        desc: "Maintain a 14-day daily movie streak",
+        icon: "⚡",
+        current: Math.min(14, maxStreak),
+        target: 14,
+        unlocked: maxStreak >= 14,
+      },
+      {
+        id: "streak_30",
+        title: "Monthly Legend",
+        desc: "Achieve an epic 30-day movie streak",
+        icon: "🗓️",
+        current: Math.min(30, maxStreak),
+        target: 30,
+        unlocked: maxStreak >= 30,
+      },
+      {
+        id: "played_25",
+        title: "Silver Screen Regular",
+        desc: "Solve 25 movie puzzles across your career",
+        icon: "🍿",
+        current: Math.min(25, totalPlayed),
+        target: 25,
+        unlocked: totalPlayed >= 25,
+      },
+      {
+        id: "played_50",
+        title: "Half-Century Sleuth",
+        desc: "Solve 50 movie puzzles across your career",
+        icon: "🎖️",
+        current: Math.min(50, totalPlayed),
+        target: 50,
+        unlocked: totalPlayed >= 50,
+      },
+      {
+        id: "century_club",
+        title: "Century Club",
+        desc: "Play and solve 100 cinema puzzles",
+        icon: "🏆",
+        current: Math.min(100, totalPlayed),
+        target: 100,
+        unlocked: totalPlayed >= 100,
+      },
+      {
+        id: "score_10k",
+        title: "Box Office Mogul",
+        desc: "Accumulate over 10,000 total career points",
+        icon: "💎",
+        current: Math.min(10000, totalPoints),
+        target: 10000,
+        unlocked: totalPoints >= 10000,
+      },
+      {
+        id: "score_25k",
+        title: "High Roller Club",
+        desc: "Accumulate over 25,000 total career points",
+        icon: "👑",
+        current: Math.min(25000, totalPoints),
+        target: 25000,
+        unlocked: totalPoints >= 25000,
       },
       {
         id: "perfectionist",
@@ -193,13 +298,139 @@ export async function GET(request: Request) {
         unlocked: perfectScoresCount >= 1,
       },
       {
-        id: "century_club",
-        title: "Century Club",
-        desc: "Play and solve 100 cinema puzzles",
-        icon: "🏆",
-        current: Math.min(100, totalPlayed),
-        target: 100,
-        unlocked: totalPlayed >= 100,
+        id: "psychic_strike",
+        title: "Cinephile Psychic",
+        desc: "Deduce a film in 3 clues or fewer",
+        icon: "🎯",
+        current: Math.min(1, distribution.psychic),
+        target: 1,
+        unlocked: distribution.psychic >= 1,
+      },
+      {
+        id: "cold_open",
+        title: "Cold Open",
+        desc: "Deduce a film in just 1 or 2 clues",
+        icon: "👁️",
+        current: Math.min(1, underTwoCluesCount),
+        target: 1,
+        unlocked: underTwoCluesCount >= 1,
+      },
+      {
+        id: "sharp_detective",
+        title: "Sharp Detective",
+        desc: "Solve 5 movies in 10 clues or fewer",
+        icon: "🔍",
+        current: Math.min(5, underTenCluesCount),
+        target: 5,
+        unlocked: underTenCluesCount >= 5,
+      },
+      {
+        id: "photo_finish",
+        title: "Photo Finish",
+        desc: "Solve a movie on the 40th clue (Skin of Your Teeth)",
+        icon: "⏱️",
+        current: Math.min(1, clutchWinsCount),
+        target: 1,
+        unlocked: clutchWinsCount >= 1,
+      },
+      {
+        id: "golden_age",
+        title: "Golden Age Explorer",
+        desc: "Solve 3 classic films released before the year 2000",
+        icon: "🎞️",
+        current: Math.min(3, classicPre2000Count),
+        target: 3,
+        unlocked: classicPre2000Count >= 3,
+      },
+      {
+        id: "decade_90s",
+        title: "90s Nostalgia",
+        desc: "Deduce 5 films released during the 1990s",
+        icon: "📼",
+        current: Math.min(5, decade90sCount),
+        target: 5,
+        unlocked: decade90sCount >= 5,
+      },
+      {
+        id: "decade_00s",
+        title: "Millennium Mania",
+        desc: "Deduce 5 films released in the 2000s",
+        icon: "💿",
+        current: Math.min(5, decade00sCount),
+        target: 5,
+        unlocked: decade00sCount >= 5,
+      },
+      {
+        id: "decade_10s",
+        title: "Modern Cinema Buff",
+        desc: "Deduce 5 modern films released from 2010 onwards",
+        icon: "🎥",
+        current: Math.min(5, decade10sPlusCount),
+        target: 5,
+        unlocked: decade10sPlusCount >= 5,
+      },
+      {
+        id: "decade_hopper",
+        title: "Decade Hopper",
+        desc: "Solve films spanning across at least 4 different decades",
+        icon: "⏳",
+        current: Math.min(4, uniqueDecades.size),
+        target: 4,
+        unlocked: uniqueDecades.size >= 4,
+      },
+      {
+        id: "single_word",
+        title: "One-Word Icon",
+        desc: "Solve 5 movies whose title is a single word",
+        icon: "🔤",
+        current: Math.min(5, singleWordTitleCount),
+        target: 5,
+        unlocked: singleWordTitleCount >= 5,
+      },
+      {
+        id: "franchise_fan",
+        title: "Franchise Fanatic",
+        desc: "Solve 3 sequels or franchise movies",
+        icon: "🍿",
+        current: Math.min(3, franchiseCount),
+        target: 3,
+        unlocked: franchiseCount >= 3,
+      },
+      {
+        id: "genre_scifi",
+        title: "Sci-Fi & Fantasy Voyager",
+        desc: "Solve 5 Science Fiction or Fantasy films",
+        icon: "🚀",
+        current: Math.min(5, sciFiFantasyCount),
+        target: 5,
+        unlocked: sciFiFantasyCount >= 5,
+      },
+      {
+        id: "genre_action",
+        title: "Adrenaline Pulse",
+        desc: "Solve 5 high-octane Action, Thriller, or Crime films",
+        icon: "💥",
+        current: Math.min(5, actionCrimeCount),
+        target: 5,
+        unlocked: actionCrimeCount >= 5,
+      },
+      {
+        id: "quote_scholar",
+        title: "Quote Scholar",
+        desc: "Win 3 games where your deciding clue was a memorable quote",
+        icon: "🗣️",
+        current: Math.min(3, quoteWinCount),
+        target: 3,
+        unlocked: quoteWinCount >= 3,
+      },
+      {
+        id: "behind_curtain",
+        title: "Behind the Curtain",
+        desc: "Win 3 games where your deciding clue was a production secret",
+        icon: "🎬",
+        current: Math.min(3, behindCurtainWinCount),
+        target: 3,
+        unlocked: behindCurtainWinCount >= 3,
       },
     ];
 
@@ -234,7 +465,7 @@ export async function GET(request: Request) {
       badges,
       history,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("API Profile crash:", err);
     return NextResponse.json(
       { error: "Internal server error" },
